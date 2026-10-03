@@ -5,32 +5,103 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>eZeus Web</title>
 <style>
+  /* Styled after the game's own menus: blue framed buttons over the main
+     menu painting, and blue message panels with a light inner rim. The
+     painting and the Zeus font are read from the imported game files. */
   :root {
-    --bg: #14110d; --panel: #221c15; --text: #efe6d4; --muted: #a89a82;
-    --accent: #d9a441; --accent-text: #1a1408; --border: #3d3326; --bad: #e0705a;
+    --sky-top: #6c7bd6; --sky-bottom: #b9c3ee;
+    --btn: #3586c4; --btn-hi: #9fd8f4; --btn-lo: #154772; --btn-text: #eef8ff;
+    --hover-text: #ffe27a;
+    --panel: #2a78b4; --panel-deep: #1b5786; --rim-in: #8fd0f0; --rim-out: #d99a86;
+    --title: #fff3c4; --text: #eef8ff; --muted: #bfe0f5; --bad: #ffb09a;
+    --gold: #f2c84b;
+    --zeus: "Zeus", "Trajan Pro", "Cinzel", "Palatino Linotype", Palatino, Georgia, serif;
+    /* Until the game files are imported: sky, lavender mountains and a hill
+       in the colours of the main menu painting. */
+    --landscape:
+      radial-gradient(90% 38% at 20% 108%, #8d6a46 0 60%, #0000 60.5%),
+      radial-gradient(80% 32% at 85% 104%, #6f7f3e 0 60%, #0000 60.5%),
+      radial-gradient(45% 42% at 72% 92%, #9c9ad6 0 55%, #0000 55.5%),
+      radial-gradient(30% 22% at 22% 86%, #a9a8dc 0 55%, #0000 55.5%),
+      linear-gradient(var(--sky-top), var(--sky-bottom) 80%);
   }
   * { box-sizing: border-box; }
-  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
-    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
-  #setup { max-width: 640px; margin: 0 auto; padding: 48px 16px; }
-  h1 { font-size: 28px; margin: 0 0 4px; letter-spacing: .02em; }
-  .sub { color: var(--muted); margin: 0 0 28px; }
-  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
-    padding: 20px; margin-bottom: 16px; }
-  .card p { margin: 0 0 12px; }
-  .row { display: flex; gap: 10px; flex-wrap: wrap; }
-  button { font: inherit; padding: 10px 18px; border-radius: 8px; cursor: pointer;
-    border: 1px solid var(--border); background: transparent; color: var(--text); }
-  button.primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent);
-    font-weight: 600; }
-  button:disabled { opacity: .45; cursor: default; }
-  progress { width: 100%; height: 10px; accent-color: var(--accent); }
-  #progressText { color: var(--muted); font-size: 13px; margin-top: 6px;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  html, body { margin: 0; min-height: 100%; }
+  body {
+    color: var(--text);
+    font: 15px/1.5 "Palatino Linotype", Palatino, Georgia, serif;
+    background: #000;
+  }
+  #setup {
+    min-height: 100vh; display: flex; flex-direction: column; align-items: center;
+    padding: 6vh 16px 32px;
+    background:
+      linear-gradient(to bottom, #0000 55%, #0006),
+      var(--art, var(--landscape));
+    background-size: cover; background-position: center bottom;
+  }
+
+  .title { text-align: center; margin-bottom: 4vh; }
+  h1 {
+    margin: 0; font: 400 clamp(40px, 8vw, 72px)/1 var(--zeus); color: var(--title);
+    letter-spacing: .04em;
+    text-shadow: 0 2px 0 #3a2a10, 0 0 3px #3a2a10, 0 6px 18px #0009;
+  }
+  .sub {
+    margin: 10px 0 0; font: 400 clamp(14px, 2.2vw, 18px)/1.3 var(--zeus);
+    color: var(--title); letter-spacing: .06em; text-shadow: 0 1px 0 #3a2a10, 0 2px 8px #000a;
+  }
+
+  /* Main-menu style stack of buttons. */
+  .menu { display: flex; flex-direction: column; align-items: center; gap: 14px;
+    width: min(340px, 100%); }
+  .menu-group { display: contents; }
+  .menu-group[hidden] { display: none; }
+  button.menu-btn {
+    width: 100%; padding: 9px 16px; cursor: pointer;
+    font: 400 19px/1.2 var(--zeus); letter-spacing: .05em; color: var(--btn-text);
+    background:
+      radial-gradient(circle at 30% 20%, #ffffff14 0 2px, #0000 3px) 0 0 / 9px 9px,
+      linear-gradient(#4196d4, var(--btn) 45%, #2a74ad);
+    border: 2px solid; border-color: var(--btn-hi) var(--btn-lo) var(--btn-lo) var(--btn-hi);
+    outline: 1px solid #0c2a45; box-shadow: 0 3px 10px #0007;
+    text-shadow: 0 1px 1px #0b2b47;
+  }
+  button.menu-btn:hover:not(:disabled), button.menu-btn:focus-visible { color: var(--hover-text); }
+  button.menu-btn:active:not(:disabled) {
+    border-color: var(--btn-lo) var(--btn-hi) var(--btn-hi) var(--btn-lo);
+  }
+  button.menu-btn:disabled { cursor: default; color: #a9c6dc; filter: saturate(.6); }
+  button.menu-btn.play { font-size: 26px; padding: 12px 16px; color: var(--hover-text); }
+  button.menu-btn.small { font-size: 15px; padding: 6px 12px; width: auto; }
+
+  /* Message panel like the game's dialogs. */
+  .panel {
+    width: min(560px, 100%); margin-top: 4vh; padding: 16px 20px;
+    background:
+      radial-gradient(circle at 20% 30%, #ffffff10 0 1.5px, #0000 2.5px) 0 0 / 7px 7px,
+      radial-gradient(circle at 70% 60%, #00000014 0 1.5px, #0000 2.5px) 0 0 / 11px 11px,
+      var(--panel);
+    border: 3px solid var(--rim-in); outline: 3px solid var(--rim-out);
+    box-shadow: 0 0 0 4px #5b2c22, 0 10px 30px #000a;
+  }
+  .panel p { margin: 0 0 10px; }
+  .panel p:last-child { margin-bottom: 0; }
+  #status { font: 400 18px/1.3 var(--zeus); color: var(--title); text-align: center;
+    letter-spacing: .03em; margin-bottom: 12px; }
   #status.bad { color: var(--bad); }
-  #savesText { color: var(--muted); font-size: 13px; margin-top: 10px; }
+  .inset { background: var(--panel-deep); box-shadow: inset 2px 2px 4px #0008, inset -1px -1px 0 #ffffff22;
+    padding: 10px 12px; margin-top: 10px; }
+  .help { color: var(--muted); font-size: 14px; }
+  .help b { color: var(--text); font-weight: 600; }
+  .bar { height: 12px; background: #0d3557; box-shadow: inset 1px 1px 3px #000a; }
+  .bar > div { height: 100%; width: 0; background: linear-gradient(#ffe48a, var(--gold) 50%, #b8892a); }
+  #progressText, #savesText { color: var(--muted); font-size: 13px; margin-top: 6px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   #savesText:empty { display: none; }
-  code { background: #0004; padding: 1px 5px; border-radius: 4px; }
+  .footer { margin-top: 12px; display: flex; justify-content: center; }
+  code { font-size: 13px; background: #0003; padding: 0 4px; }
+
   #game { display: none; position: fixed; inset: 0; background: #000;
     align-items: center; justify-content: center; }
   #canvas { display: block; outline: none; }
@@ -40,52 +111,51 @@
      so the browser keeps spinning it even then. */
   #busy { position: fixed; left: 50%; top: 50%; z-index: 10; pointer-events: none;
     transform: translate(-50%, -50%); display: flex; align-items: center; gap: 12px;
-    padding: 12px 18px; border-radius: 10px; background: #000b; color: var(--text);
-    font-size: 14px; }
+    padding: 10px 18px; font: 400 18px/1 var(--zeus); color: var(--title);
+    background: var(--panel); border: 2px solid var(--rim-in); outline: 2px solid var(--rim-out);
+    box-shadow: 0 6px 20px #000a; }
   #busy[hidden] { display: none; }
-  #busy .spinner { width: 22px; height: 22px; border-radius: 50%;
-    border: 3px solid #fff3; border-top-color: var(--accent);
+  #busy .spinner { width: 20px; height: 20px; border-radius: 50%;
+    border: 3px solid #ffffff40; border-top-color: var(--gold);
     animation: spin .8s linear infinite; will-change: transform; }
   @keyframes spin { to { transform: rotate(360deg); } }
 </style>
 </head>
 <body>
 <div id="setup">
-  <h1>eZeus</h1>
-  <p class="sub">Zeus: Master of Olympus in the browser (WebAssembly)</p>
-
-  <div class="card" id="importCard">
-    <p>Choose the <b>eZeus Client</b> folder, or your <b>Zeus and Poseidon</b> folder with the
-      eZeus folder (<code>eZeus-…</code> with <code>interface.e</code>, <code>i30.e</code>) inside.
-      The files are copied into this browser's storage (OPFS), so this is needed only once.</p>
-    <div class="row">
-      <button class="primary" id="pickBtn">Choose game folder</button>
-      <button id="serverBtn" hidden>Import from local server</button>
-      <input type="file" id="dirInput" webkitdirectory multiple hidden>
-    </div>
+  <div class="title">
+    <h1>eZeus Web</h1>
+    <p class="sub">Zeus: Master of Olympus · Poseidon</p>
   </div>
 
-  <div class="card" id="progressCard" hidden>
-    <progress id="progress" max="1" value="0"></progress>
-    <div id="progressText"></div>
-  </div>
-
-  <div class="card" id="savesCard" hidden>
-    <p>Saves are kept in this browser only. Download them to back them up or to move them
-      to another browser; uploading adds them to the saves here.</p>
-    <div class="row">
-      <button id="downloadSavesBtn">Download saves</button>
-      <button id="uploadSavesBtn">Upload saves</button>
+  <div class="menu">
+    <button class="menu-btn play" id="playBtn" disabled>Play</button>
+    <button class="menu-btn" id="pickBtn">Choose Game Folder</button>
+    <button class="menu-btn" id="serverBtn" hidden>Import From Local Server</button>
+    <input type="file" id="dirInput" webkitdirectory multiple hidden>
+    <div class="menu-group" id="savesCard" hidden>
+      <button class="menu-btn" id="downloadSavesBtn">Download Saves</button>
+      <button class="menu-btn" id="uploadSavesBtn">Upload Saves</button>
       <input type="file" id="savesInput" accept=".zip,application/zip" hidden>
     </div>
-    <div id="savesText"></div>
   </div>
 
-  <div class="card">
+  <div class="panel">
     <p id="status">Loading engine…</p>
-    <div class="row">
-      <button class="primary" id="playBtn" disabled>Play</button>
-      <button id="clearBtn" hidden>Remove game files from browser</button>
+    <div id="progressCard" class="inset" hidden>
+      <div class="bar"><div id="progress"></div></div>
+      <div id="progressText"></div>
+    </div>
+    <div class="inset help" id="importCard">
+      <p>Choose the <b>eZeus Web Client</b> folder, or your <b>Zeus and Poseidon</b> folder
+        with the eZeus folder (<code>interface.e</code>, <code>i30.e</code>) inside. The files are
+        copied into this browser's storage, so this is needed only once.</p>
+      <p>Saves stay in this browser: download them to keep a backup or to move them to
+        another browser.</p>
+      <div id="savesText"></div>
+    </div>
+    <div class="footer">
+      <button class="menu-btn small" id="clearBtn" hidden>Remove Game Files From Browser</button>
     </div>
   </div>
 </div>
@@ -153,6 +223,31 @@ async function pruneUnneeded() {
   }
 }
 
+// The main menu painting and the Zeus font, read from the imported files.
+// The offset is where eZeus keeps Zeus_FE_Registry.jpg in interface.e
+// (see esplitbinary.h); the JPEG signature check skips other versions.
+const MENU_ART = { file: 'interface.e', pos: 62065190, size: 421191 };
+let artLoaded = false;
+async function loadGameArt() {
+  if (artLoaded) return;
+  artLoaded = true;
+  const ez = await (await opfsRoot()).getDirectoryHandle('eZeus');
+  try {
+    const font = await (await (await ez.getDirectoryHandle('Fonts'))
+      .getFileHandle('Zeus.ttf')).getFile();
+    const face = new FontFace('Zeus', await font.arrayBuffer());
+    document.fonts.add(await face.load());
+  } catch (e) { console.warn('Zeus font not loaded', e); }
+  try {
+    const file = await (await ez.getFileHandle(MENU_ART.file)).getFile();
+    const jpg = file.slice(MENU_ART.pos, MENU_ART.pos + MENU_ART.size, 'image/jpeg');
+    const sig = new Uint8Array(await jpg.slice(0, 3).arrayBuffer());
+    if (sig[0] === 0xff && sig[1] === 0xd8 && sig[2] === 0xff) {
+      $('setup').style.setProperty('--art', `url(${URL.createObjectURL(jpg)})`);
+    }
+  } catch (e) { console.warn('Menu art not loaded', e); }
+}
+
 async function checkReady() {
   try {
     const root = await opfsRoot();
@@ -160,7 +255,10 @@ async function checkReady() {
     await ez.getFileHandle(READY_MARKER);
     filesReady = true;
   } catch (e) { filesReady = false; }
-  if (filesReady) await pruneUnneeded().catch(e => console.warn(e));
+  if (filesReady) {
+    await pruneUnneeded().catch(e => console.warn(e));
+    loadGameArt().catch(e => console.warn(e));
+  }
   refreshButtons();
 }
 
@@ -209,11 +307,11 @@ async function importFiles(entries) {
   const has = p => list.some(e => e.target.join('/').toLowerCase() === p);
   const hasDir = p => list.some(e => e.target.join('/').toLowerCase().startsWith(p));
   if (!has('ezeus/interface.e')) {
-    throw new Error('eZeus/interface.e not found. Choose the eZeus Client folder, or the ' +
+    throw new Error('eZeus/interface.e not found. Choose the eZeus Web Client folder, or the ' +
       'Zeus and Poseidon folder that contains the eZeus folder.');
   }
   if (!hasDir('audio/wavs/')) {
-    throw new Error('Audio/Wavs not found. Choose the eZeus Client folder, or the root ' +
+    throw new Error('Audio/Wavs not found. Choose the eZeus Web Client folder, or the root ' +
       'folder of the installed game.');
   }
 
@@ -255,7 +353,7 @@ async function importFiles(entries) {
       await (await e.file.stream()).pipeTo(writable);
     }
     done += e.file.size;
-    $('progress').value = total ? done / total : 1;
+    $('progress').style.width = (total ? 100 * done / total : 100) + '%';
     $('progressText').textContent =
       `${(done / 2 ** 20).toFixed(0)} / ${(total / 2 ** 20).toFixed(0)} MB — ${e.target.join('/')}`;
   }

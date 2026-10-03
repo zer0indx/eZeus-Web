@@ -52,8 +52,8 @@ Start: double-click start.bat (needs Python 3). It starts a local server at
 http://localhost:{PORT}/ and opens the game. Keep the window open while
 playing.
 
-On the first launch click "Choose game folder" and pick the eZeus Client
-folder; its files are copied into the browser's storage (~630 MB), so later
+On the first launch click "Choose game folder" and pick the eZeus Web
+Client folder; its files are copied into the browser's storage (~630 MB), so later
 launches start right away. Saves are kept in the browser: use
 "Download saves" / "Upload saves" on the start page to back them up.
 
@@ -61,9 +61,9 @@ Use a recent Chrome, Edge or Firefox.
 """
 
 # Not README.txt: the game has its own Readme.txt and Windows ignores case.
-CLIENT_README_NAME = "README-eZeus-Client.txt"
-CLIENT_README = """eZeus Client
-============
+CLIENT_README_NAME = "README-eZeus-Web-Client.txt"
+CLIENT_README = """eZeus Web Client
+=================
 
 The game files eZeus needs, taken from your copy of Zeus and Poseidon.
 Pick this folder with "Choose game folder" on the eZeus start page.
