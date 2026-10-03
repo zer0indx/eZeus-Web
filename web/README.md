@@ -35,6 +35,12 @@ picker. Without it, use "choose game folder".
 
 The game folder must contain the original game and the eZeus release folder
 (`eZeus-*` with `interface.e`, `i30.e`, ...), as for the desktop build.
+About 630 MB is imported: the contents of `DATA` (eZeus only checks that the
+folder exists), installers, Windows binaries, manuals and videos are skipped.
+
+Saves stay in the browser. "Download saves" on the start page packs them into
+a ZIP; "Upload saves" adds the saves from such a ZIP. Re-importing the game
+folder never replaces saves already in the browser.
 
 ## How the port works
 

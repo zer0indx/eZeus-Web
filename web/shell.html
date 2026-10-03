@@ -28,6 +28,8 @@
   #progressText { color: var(--muted); font-size: 13px; margin-top: 6px;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   #status.bad { color: var(--bad); }
+  #savesText { color: var(--muted); font-size: 13px; margin-top: 10px; }
+  #savesText:empty { display: none; }
   code { background: #0004; padding: 1px 5px; border-radius: 4px; }
   #game { display: none; position: fixed; inset: 0; background: #000;
     align-items: center; justify-content: center; }
@@ -68,6 +70,17 @@
     <div id="progressText"></div>
   </div>
 
+  <div class="card" id="savesCard" hidden>
+    <p>Saves are kept in this browser only. Download them to back them up or to move them
+      to another browser; uploading adds them to the saves here.</p>
+    <div class="row">
+      <button id="downloadSavesBtn">Download saves</button>
+      <button id="uploadSavesBtn">Upload saves</button>
+      <input type="file" id="savesInput" accept=".zip,application/zip" hidden>
+    </div>
+    <div id="savesText"></div>
+  </div>
+
   <div class="card">
     <p id="status">Loading engine…</p>
     <div class="row">
@@ -86,10 +99,14 @@
 'use strict';
 const $ = id => document.getElementById(id);
 const READY_MARKER = '.ezeus-web-ready';
-// Not needed by eZeus: installers, Windows binaries, manuals, FMV videos.
+// Not needed by eZeus: installers, Windows binaries, manuals, FMV videos and
+// the original game's text files (eZeus has its own .xml copies).
 const SKIP_EXT = new Set(['exe', 'dll', 'pdf', 'zip', 'lnk', 'ico', 'asi', 'm3d', 'msg',
-  'hashdb', 'bik']);
+  'hashdb', 'bik', 'eng']);
 const SKIP_DIRS = new Set(['binks']);
+// eZeus only checks that these top-level folders exist; its graphics come from
+// the .e files. DATA alone is ~370 MB.
+const EMPTY_DIRS = ['DATA'];
 
 let runtimeReady = false;
 let filesReady = false;
@@ -102,6 +119,7 @@ function setStatus(text, bad) {
 function refreshButtons() {
   $('playBtn').disabled = !(runtimeReady && filesReady);
   $('clearBtn').hidden = !filesReady;
+  $('savesCard').hidden = !filesReady;
   if (!crossOriginIsolated) {
     setStatus('The page is not cross-origin isolated (COOP/COEP headers are required). ' +
       'Serve it with web/serve.py.', true);
@@ -116,6 +134,21 @@ function refreshButtons() {
 
 async function opfsRoot() { return navigator.storage.getDirectory(); }
 
+// Removes files earlier versions of this page imported but eZeus never reads.
+async function pruneUnneeded() {
+  const root = await opfsRoot();
+  for (const d of EMPTY_DIRS) {
+    try {
+      const dir = await root.getDirectoryHandle(d);
+      for await (const [name] of dir.entries()) await dir.removeEntry(name, { recursive: true });
+    } catch (e) {}
+  }
+  for await (const [name, handle] of root.entries()) {
+    const ext = name.includes('.') ? name.split('.').pop().toLowerCase() : '';
+    if (handle.kind === 'file' && SKIP_EXT.has(ext)) await root.removeEntry(name);
+  }
+}
+
 async function checkReady() {
   try {
     const root = await opfsRoot();
@@ -123,6 +156,7 @@ async function checkReady() {
     await ez.getFileHandle(READY_MARKER);
     filesReady = true;
   } catch (e) { filesReady = false; }
+  if (filesReady) await pruneUnneeded().catch(e => console.warn(e));
   refreshButtons();
 }
 
@@ -133,6 +167,7 @@ function targetPath(parts, ezeusDir) {
   const name = parts[parts.length - 1];
   const ext = name.includes('.') ? name.split('.').pop().toLowerCase() : '';
   if (SKIP_EXT.has(ext) || dirs.some(d => SKIP_DIRS.has(d))) return null;
+  if (EMPTY_DIRS.some(d => d.toLowerCase() === dirs[0])) return null;
   if (parts.length > 1 && /^ezeus/i.test(parts[0])) {
     if (parts[0] !== ezeusDir) return null;
     parts = ['eZeus', ...parts.slice(1)];
@@ -168,12 +203,13 @@ async function importFiles(entries) {
     if (t) list.push({ ...e, target: t });
   }
   const has = p => list.some(e => e.target.join('/').toLowerCase() === p);
+  const hasDir = p => list.some(e => e.target.join('/').toLowerCase().startsWith(p));
   if (!has('ezeus/interface.e')) {
     throw new Error('eZeus/interface.e not found. Choose the Zeus and Poseidon folder ' +
       'that contains the eZeus folder.');
   }
-  if (!has('zeus_text.eng')) {
-    throw new Error('Zeus_Text.eng not found. Choose the root folder of the installed game.');
+  if (!hasDir('audio/wavs/')) {
+    throw new Error('Audio/Wavs not found. Choose the root folder of the installed game.');
   }
 
   $('progressCard').hidden = false;
@@ -197,14 +233,17 @@ async function importFiles(entries) {
   }
   // eGameDir resolves everything relative to eZeus/Bin, so it must exist.
   await dirFor(['eZeus', 'Bin']);
+  for (const d of EMPTY_DIRS) await dirFor([d]);
 
   async function copy(e) {
     const dir = await dirFor(e.target.slice(0, -1));
     const name = e.target[e.target.length - 1];
+    // Never replace saves made in the browser with ones from the folder.
+    const isSave = e.target[0] === 'eZeus' && e.target[1] === 'Save';
     let skip = false;
     try {
       const existing = await (await dir.getFileHandle(name)).getFile();
-      skip = existing.size === e.file.size;
+      skip = isSave || existing.size === e.file.size;
     } catch (err) {}
     if (!skip) {
       const writable = await (await dir.getFileHandle(name, { create: true })).createWritable();
@@ -224,6 +263,7 @@ async function importFiles(entries) {
   const marker = await (await ez.getFileHandle(READY_MARKER, { create: true })).createWritable();
   await marker.write(new Date().toISOString());
   await marker.close();
+  await pruneUnneeded();
   $('progressText').textContent = `Done: ${files.length} files.`;
   $('pickBtn').disabled = false;
 }
@@ -274,10 +314,187 @@ fetch('game-manifest.json')
 $('dirInput').addEventListener('change', e => runImport(walkInput(e.target.files)));
 
 $('clearBtn').addEventListener('click', async () => {
-  if (!confirm('Remove the imported game files (and saves) from this browser?')) return;
+  if (!confirm('Remove the imported game files and saves from this browser? ' +
+               'Download your saves first to keep them.')) return;
   const root = await opfsRoot();
   for await (const [name] of root.entries()) await root.removeEntry(name, { recursive: true });
   await checkReady();
+});
+
+// Minimal ZIP support for the saves archive: writes stored (uncompressed)
+// entries and reads stored or deflated ones, so archives repacked by other
+// tools load too.
+const CRC_TABLE = (() => {
+  const t = new Uint32Array(256);
+  for (let n = 0; n < 256; n++) {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+    t[n] = c >>> 0;
+  }
+  return t;
+})();
+
+function crc32(bytes) {
+  let c = 0xffffffff;
+  for (let i = 0; i < bytes.length; i++) c = CRC_TABLE[(c ^ bytes[i]) & 0xff] ^ (c >>> 8);
+  return (c ^ 0xffffffff) >>> 0;
+}
+
+// entries: [{ name, data: Uint8Array }]; a name ending in '/' is a folder.
+function makeZip(entries) {
+  const enc = new TextEncoder();
+  const now = new Date();
+  const time = (now.getHours() << 11) | (now.getMinutes() << 5) | (now.getSeconds() >> 1);
+  const date = ((now.getFullYear() - 1980) << 9) | ((now.getMonth() + 1) << 5) | now.getDate();
+  const chunks = [], central = [];
+  let offset = 0;
+  for (const e of entries) {
+    const name = enc.encode(e.name);
+    const data = e.data || new Uint8Array(0);
+    const crc = crc32(data);
+    const local = new DataView(new ArrayBuffer(30));
+    local.setUint32(0, 0x04034b50, true);
+    local.setUint16(4, 20, true);
+    local.setUint16(6, 0x0800, true); // UTF-8 names
+    local.setUint16(10, time, true);
+    local.setUint16(12, date, true);
+    local.setUint32(14, crc, true);
+    local.setUint32(18, data.length, true);
+    local.setUint32(22, data.length, true);
+    local.setUint16(26, name.length, true);
+    chunks.push(new Uint8Array(local.buffer), name, data);
+
+    const cd = new DataView(new ArrayBuffer(46));
+    cd.setUint32(0, 0x02014b50, true);
+    cd.setUint16(4, 20, true);
+    cd.setUint16(6, 20, true);
+    cd.setUint16(8, 0x0800, true);
+    cd.setUint16(12, time, true);
+    cd.setUint16(14, date, true);
+    cd.setUint32(16, crc, true);
+    cd.setUint32(20, data.length, true);
+    cd.setUint32(24, data.length, true);
+    cd.setUint16(28, name.length, true);
+    cd.setUint32(38, e.name.endsWith('/') ? 0x10 : 0, true); // MS-DOS folder flag
+    cd.setUint32(42, offset, true);
+    central.push(new Uint8Array(cd.buffer), name);
+    offset += 30 + name.length + data.length;
+  }
+  const cdSize = central.reduce((s, c) => s + c.length, 0);
+  const end = new DataView(new ArrayBuffer(22));
+  end.setUint32(0, 0x06054b50, true);
+  end.setUint16(8, entries.length, true);
+  end.setUint16(10, entries.length, true);
+  end.setUint32(12, cdSize, true);
+  end.setUint32(16, offset, true);
+  return new Blob([...chunks, ...central, new Uint8Array(end.buffer)], { type: 'application/zip' });
+}
+
+async function readZip(buffer) {
+  const view = new DataView(buffer);
+  let eocd = -1;
+  for (let i = buffer.byteLength - 22; i >= Math.max(0, buffer.byteLength - 65557); i--) {
+    if (view.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+  }
+  if (eocd < 0) throw new Error('Not a ZIP archive.');
+  const count = view.getUint16(eocd + 10, true);
+  let p = view.getUint32(eocd + 16, true);
+  const dec = new TextDecoder();
+  const out = [];
+  for (let i = 0; i < count; i++) {
+    if (view.getUint32(p, true) !== 0x02014b50) throw new Error('Damaged ZIP archive.');
+    const method = view.getUint16(p + 10, true);
+    const csize = view.getUint32(p + 20, true);
+    const nameLen = view.getUint16(p + 28, true);
+    const extraLen = view.getUint16(p + 30, true);
+    const commentLen = view.getUint16(p + 32, true);
+    const local = view.getUint32(p + 42, true);
+    const name = dec.decode(new Uint8Array(buffer, p + 46, nameLen));
+    p += 46 + nameLen + extraLen + commentLen;
+    if (name.endsWith('/')) { out.push({ name }); continue; }
+    const start = local + 30 + view.getUint16(local + 26, true) + view.getUint16(local + 28, true);
+    const raw = new Uint8Array(buffer, start, csize);
+    let data;
+    if (method === 0) data = raw.slice();
+    else if (method === 8) {
+      const stream = new Blob([raw]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+      data = new Uint8Array(await new Response(stream).arrayBuffer());
+    } else throw new Error(`Unsupported compression in ${name}.`);
+    out.push({ name, data });
+  }
+  return out;
+}
+
+async function saveDir(create) {
+  const ez = await (await opfsRoot()).getDirectoryHandle('eZeus');
+  return ez.getDirectoryHandle('Save', { create });
+}
+
+async function collectSaves(dir, prefix, out) {
+  for await (const [name, handle] of dir.entries()) {
+    if (handle.kind === 'directory') {
+      out.push({ name: prefix + name + '/' });
+      await collectSaves(handle, prefix + name + '/', out);
+    } else {
+      const file = await handle.getFile();
+      out.push({ name: prefix + name, data: new Uint8Array(await file.arrayBuffer()) });
+    }
+  }
+  return out;
+}
+
+$('downloadSavesBtn').addEventListener('click', async () => {
+  try {
+    let entries = [];
+    try { entries = await collectSaves(await saveDir(false), 'Save/', []); } catch (e) {}
+    const files = entries.filter(e => e.data).length;
+    if (!files) {
+      $('savesText').textContent = 'There are no saves yet.';
+      return;
+    }
+    const url = URL.createObjectURL(makeZip(entries));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `ezeus-saves-${new Date().toISOString().slice(0, 10)}.zip`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+    $('savesText').textContent = `Downloaded ${files} save files.`;
+  } catch (e) {
+    console.error(e);
+    $('savesText').textContent = 'Could not download saves: ' + (e.message || e);
+  }
+});
+
+$('uploadSavesBtn').addEventListener('click', () => $('savesInput').click());
+$('savesInput').addEventListener('change', async e => {
+  const file = e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
+  try {
+    const entries = await readZip(await file.arrayBuffer());
+    const root = await saveDir(true);
+    let added = 0;
+    for (const entry of entries) {
+      // Accept archives with or without the top-level Save folder.
+      let parts = entry.name.split('/').filter(Boolean);
+      if (parts[0] && parts[0].toLowerCase() === 'save') parts = parts.slice(1);
+      if (!parts.length || parts.some(p => p === '.' || p === '..' || p.includes('\\'))) continue;
+      const dirs = entry.data ? parts.slice(0, -1) : parts;
+      let dir = root;
+      for (const d of dirs) dir = await dir.getDirectoryHandle(d, { create: true });
+      if (!entry.data) continue;
+      const w = await (await dir.getFileHandle(parts[parts.length - 1], { create: true }))
+        .createWritable();
+      await w.write(entry.data);
+      await w.close();
+      added++;
+    }
+    $('savesText').textContent = added ? `Uploaded ${added} save files.`
+                                       : 'The archive has no save files.';
+  } catch (err) {
+    console.error(err);
+    $('savesText').textContent = 'Could not upload saves: ' + (err.message || err);
+  }
 });
 
 $('playBtn').addEventListener('click', () => {
