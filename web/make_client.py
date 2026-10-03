@@ -91,12 +91,10 @@ def make_server(server_dir, build_dir, web_dir):
     for f in APP_FILES:
         copy_if_changed(os.path.join(build_dir, f), os.path.join(server_dir, "app", f))
     copy_if_changed(os.path.join(web_dir, "serve.py"), os.path.join(server_dir, "server.py"))
-    for folder in ("static", "assets"):
-        source = os.path.join(web_dir, folder)
-        if os.path.isdir(source):
-            for name in os.listdir(source):
-                copy_if_changed(os.path.join(source, name),
-                                os.path.join(server_dir, "app", folder, name))
+    static = os.path.join(web_dir, "static")
+    for name in os.listdir(static):
+        copy_if_changed(os.path.join(static, name),
+                        os.path.join(server_dir, "app", "static", name))
     write_text(os.path.join(server_dir, "start.bat"), START_BAT)
     write_text(os.path.join(server_dir, "README.txt"), SERVER_README)
     print(f"Server in {server_dir}; start it with start.bat")

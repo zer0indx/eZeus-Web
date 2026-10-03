@@ -12,7 +12,7 @@ Configuration (environment variables):
   EZEUS_GAME_SOURCE     "server": game files are taken from EZEUS_GAME_DIR
                         "local" (default): each browser picks a game folder
   EZEUS_GAME_DIR        Zeus and Poseidon folder (default /game)
-  EZEUS_DATA_DIR        saves, session secret, the game font (default /data)
+  EZEUS_DATA_DIR        saves and the session secret (default /data)
   EZEUS_APP_DIR         folder with eZeus.html, eZeus.js, eZeus.wasm
   EZEUS_PORT            port to listen on (default 8080)
   EZEUS_SESSION_DAYS    how long a sign-in lasts (default 30)
@@ -337,20 +337,6 @@ class GameFiles:
         return self.files.get(rel)
 
 
-def copy_game_font(game_dir, data_dir):
-    """Copies the Zeus font from the game files to data/assets."""
-    ezeus = gamefiles.find_ezeus_dir(game_dir)
-    font = os.path.join(game_dir, ezeus or "", "Fonts", "Zeus.ttf")
-    if not ezeus or not os.path.isfile(font):
-        return
-    out_dir = os.path.join(data_dir, "assets")
-    try:
-        os.makedirs(out_dir, exist_ok=True)
-        shutil.copyfile(font, os.path.join(out_dir, "Zeus.ttf"))
-    except OSError as e:
-        print(f"Zeus font not copied: {e}", flush=True)
-
-
 # --- HTTP -------------------------------------------------------------------
 
 class App:
@@ -383,7 +369,6 @@ class App:
                 sys.exit(f"No eZeus folder with interface.e in {game_dir}; mount your "
                          "Zeus and Poseidon folder there or set EZEUS_GAME_SOURCE=local")
             self.game = GameFiles(game_dir)
-            copy_game_font(game_dir, self.data_dir)
 
         secret = env("EZEUS_SECRET")
         if secret:
@@ -535,7 +520,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if path == "/healthz":
             return self.send_bytes(200, b"ok", "text/plain")
         if path.startswith("/static/"):
-            # The project's own art, also shown on the sign-in page.
+            # The background and font, also shown on the sign-in page.
             name = path[len("/static/"):]
             full = os.path.join(self.app.app_dir, "static", name)
             if "/" in name or name.startswith(".") or not os.path.isfile(full):
@@ -573,15 +558,6 @@ class Handler(http.server.BaseHTTPRequestHandler):
             if not full:
                 return self.send_error_json(404, "not found")
             return self.send_file(full)
-        if path.startswith("/assets/"):
-            name = path[len("/assets/"):]
-            if "/" in name or name.startswith("."):
-                return self.send_error_json(404, "not found")
-            for base in (os.path.join(self.app.data_dir, "assets"),
-                         os.path.join(self.app.app_dir, "assets")):
-                if os.path.isfile(os.path.join(base, name)):
-                    return self.send_file(os.path.join(base, name))
-            return self.send_error_json(404, "not found")
         # Only files directly in the app folder; no listings, no subfolders.
         name = path.lstrip("/")
         if name and "/" not in name and not name.startswith("."):

@@ -62,13 +62,8 @@ set_target_properties(eZeus PROPERTIES
     LINK_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/web/shell.html
 )
 
-# What the start page loads besides the game, copied next to it on every
-# build: web/static (the background) and web/assets (the game's font, put
-# there by web/extract_assets.py and not tracked by git).
-add_custom_target(web_assets ALL
+# The start page's background and font, copied next to it on every build.
+add_custom_target(web_static ALL
     COMMAND ${CMAKE_COMMAND} -E copy_directory
             ${CMAKE_CURRENT_SOURCE_DIR}/web/static ${CMAKE_BINARY_DIR}/static
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_SOURCE_DIR}/web/assets
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-            ${CMAKE_CURRENT_SOURCE_DIR}/web/assets ${CMAKE_BINARY_DIR}/assets
 )

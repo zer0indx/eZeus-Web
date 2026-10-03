@@ -19,16 +19,9 @@ cmake --build build-web
 
 The output is `build-web/eZeus.html`, `eZeus.js` and `eZeus.wasm`.
 
-The start page uses the game's Zeus font for its title and buttons. The font
-comes from the game files, so it is not in git; copy it into `web/assets` once
-(the build puts it next to the page):
-
-```bash
-python web/extract_assets.py "/path/to/Zeus and Poseidon/eZeus-0.8.2-beta"
-```
-
-Without it the page uses a serif font. The background, `web/static/background.jpg`,
-is part of the project.
+The start page's background and font are in `web/static` (the font is
+Marcellus SC, under the SIL Open Font License, see `MarcellusSC-OFL.txt`); the
+build copies the folder next to the page.
 
 ## Run
 
@@ -116,12 +109,9 @@ named volume, make `/data` writable and `/game` readable for that user, or set
 - `EZEUS_GAME_SOURCE=server`: mount your Zeus and Poseidon folder at `/game`
   (read-only). After signing in, each browser copies the files it needs
   (~630 MB) into its own storage, once, and again only for files that change.
-  Nothing has to be chosen in the browser, and the start page uses the
-  game's font, taken from that folder.
+  Nothing has to be chosen in the browser.
 - `EZEUS_GAME_SOURCE=local`: the server has no game files. Each browser picks
   a Zeus and Poseidon folder on its own computer, as in the standalone build.
-  To have the game's font on the start page, put `Zeus.ttf` from the eZeus
-  `Fonts` folder into `assets` inside the data volume.
 
 ### Saves
 
