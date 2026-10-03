@@ -1,3 +1,15 @@
+<h1 align="center">eZeus Web</h1>
+
+eZeus Web is a browser (WebAssembly) port of [eZeus](https://github.com/MaurycyLiebner/eZeus), the open-source implementation of Zeus: Master of Olympus by Maurycy Liebner.
+
+The game runs in Chrome, Edge, Firefox or Safari. It does not include any game files: on the first launch you choose your own Zeus and Poseidon folder, with an eZeus release inside, and the files are copied into the browser's storage. Saves are kept in the browser and can be downloaded and uploaded as a ZIP.
+
+**[How to build and run the web version](web/README.md)**
+
+The desktop build still works as in eZeus; everything below is the original eZeus README.
+
+---
+
 <h1 align="center">eZeus</h1>
 
 eZeus is an open-source implementation of Zeus: Master of Olympus game

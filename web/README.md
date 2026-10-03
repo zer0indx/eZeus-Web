@@ -57,7 +57,7 @@ folder never replaces saves already in the browser.
 `make_client.py` builds two folders that can be kept apart:
 
 ```bash
-python web/make_client.py "/path/to/Zeus and Poseidon" --client "/path/to/eZeus Client" --server "/path/to/eZeus Server"
+python web/make_client.py "/path/to/Zeus and Poseidon" --client "/path/to/eZeus Web Client" --server "/path/to/eZeus Server"
 ```
 
 - The client holds only the game files eZeus needs (~630 MB). It is the
