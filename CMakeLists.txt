@@ -13,6 +13,8 @@ endif()
 
 include(FetchContent)
 
+if(NOT EMSCRIPTEN)
+
 # Disable unnecessary SDL components (optional but recommended)
 set(SDL_SHARED ON CACHE BOOL "" FORCE)
 set(SDL_STATIC OFF CACHE BOOL "" FORCE)
@@ -58,6 +60,7 @@ FetchContent_Declare(
 )
 
 FetchContent_MakeAvailable(SDL2_mixer)
+endif()
 
 add_executable(eZeus
     audio/egodsounds.cpp
@@ -3370,7 +3373,11 @@ if(LINUX)
     target_link_libraries(eZeus PRIVATE ${NOISE_LIBRARY})
 endif()
 
-target_link_libraries(eZeus PRIVATE SDL2::SDL2)
-target_link_libraries(eZeus PRIVATE SDL2_ttf::SDL2_ttf)
-target_link_libraries(eZeus PRIVATE SDL2_image::SDL2_image)
-target_link_libraries(eZeus PRIVATE SDL2_mixer::SDL2_mixer)
+if(EMSCRIPTEN)
+    include(web/emscripten.cmake)
+else()
+    target_link_libraries(eZeus PRIVATE SDL2::SDL2)
+    target_link_libraries(eZeus PRIVATE SDL2_ttf::SDL2_ttf)
+    target_link_libraries(eZeus PRIVATE SDL2_image::SDL2_image)
+    target_link_libraries(eZeus PRIVATE SDL2_mixer::SDL2_mixer)
+endif()

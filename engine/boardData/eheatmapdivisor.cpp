@@ -1,6 +1,7 @@
 #include "eheatmapdivisor.h"
 
 #include <algorithm>
+#include <cfloat>
 
 #include "erand.h"
 

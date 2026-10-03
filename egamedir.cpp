@@ -49,6 +49,10 @@ std::string eGameDir::i60BinaryPath() {
 }
 
 std::string eGameDir::exeDir() {
+#ifdef __EMSCRIPTEN__
+    // Mirrors the native layout: <Zeus>/eZeus/Bin/eZeus.exe
+    return "/zeus/eZeus/Bin/";
+#endif
     const auto d = SDL_GetBasePath();
     const std::string str(d);
     return str;

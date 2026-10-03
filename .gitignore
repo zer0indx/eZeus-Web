@@ -73,3 +73,6 @@ CMakeLists.txt.user*
 *.dll
 *.exe
 
+
+# Emscripten build
+/build-web/

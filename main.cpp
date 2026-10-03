@@ -16,6 +16,18 @@
 #include "audio/emusic.h"
 #include "audio/esounds.h"
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten/wasmfs.h>
+
+// The browser loader copies the game files into the Origin Private File
+// System; mount it where eGameDir expects the Zeus installation.
+static bool mountGameFiles() {
+    const auto opfs = wasmfs_create_opfs_backend();
+    if(!opfs) return false;
+    return wasmfs_create_directory("/zeus", 0777, opfs) == 0;
+}
+#endif
+
 bool init() {
     if(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) < 0) {
         printf("SDL could not initialize! SDL Error: %s\n",
@@ -100,6 +112,12 @@ bool getDisplayResolutions(std::vector<SDL_DisplayMode>& resolutions) {
 }
 
 int main() {
+#ifdef __EMSCRIPTEN__
+    if(!mountGameFiles()) {
+        printf("Failed to mount browser storage!\n");
+        return 1;
+    }
+#endif
     if(!init()) {
         printf("Failed to initialize!\n");
         close();
@@ -172,6 +190,15 @@ int main() {
     }
 
     int r = 0;
+#ifdef __EMSCRIPTEN__
+    // The browser main loop outlives main(), so keep everything on the heap.
+    new eMusic;
+    new eSounds;
+    const auto w = new eMainWindow;
+    if(!w->initialize(settings)) return 1;
+    if(!eGameTextures::initialize(w->renderer())) return 1;
+    return w->exec();
+#endif
     {
         eMusic music;
         eSounds sounds;

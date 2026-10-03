@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>eZeus Web</title>
+<style>
+  :root {
+    --bg: #14110d; --panel: #221c15; --text: #efe6d4; --muted: #a89a82;
+    --accent: #d9a441; --accent-text: #1a1408; --border: #3d3326; --bad: #e0705a;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
+    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  #setup { max-width: 640px; margin: 0 auto; padding: 48px 16px; }
+  h1 { font-size: 28px; margin: 0 0 4px; letter-spacing: .02em; }
+  .sub { color: var(--muted); margin: 0 0 28px; }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+    padding: 20px; margin-bottom: 16px; }
+  .card p { margin: 0 0 12px; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; }
+  button { font: inherit; padding: 10px 18px; border-radius: 8px; cursor: pointer;
+    border: 1px solid var(--border); background: transparent; color: var(--text); }
+  button.primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent);
+    font-weight: 600; }
+  button:disabled { opacity: .45; cursor: default; }
+  progress { width: 100%; height: 10px; accent-color: var(--accent); }
+  #progressText { color: var(--muted); font-size: 13px; margin-top: 6px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #status.bad { color: var(--bad); }
+  code { background: #0004; padding: 1px 5px; border-radius: 4px; }
+  #game { display: none; position: fixed; inset: 0; background: #000;
+    align-items: center; justify-content: center; }
+  #canvas { display: block; max-width: 100vw; max-height: 100vh; outline: none;
+    image-rendering: auto; }
+  body.playing #setup { display: none; }
+  body.playing #game { display: flex; }
+</style>
+</head>
+<body>
+<div id="setup">
+  <h1>eZeus</h1>
+  <p class="sub">Zeus: Master of Olympus у браузері (WebAssembly)</p>
+
+  <div class="card" id="importCard">
+    <p>Виберіть папку <b>Zeus and Poseidon</b>, у якій лежить і оригінальна гра, і папка eZeus
+      (<code>eZeus-…</code> з <code>interface.e</code>, <code>i30.e</code>). Файли
+      копіюються в сховище цього браузера (OPFS), тож це треба зробити лише один раз.</p>
+    <div class="row">
+      <button class="primary" id="pickBtn">Вибрати папку гри</button>
+      <button id="serverBtn" hidden>Імпортувати з локального сервера</button>
+      <input type="file" id="dirInput" webkitdirectory multiple hidden>
+    </div>
+  </div>
+
+  <div class="card" id="progressCard" hidden>
+    <progress id="progress" max="1" value="0"></progress>
+    <div id="progressText"></div>
+  </div>
+
+  <div class="card">
+    <p id="status">Завантаження рушія…</p>
+    <div class="row">
+      <button class="primary" id="playBtn" disabled>Грати</button>
+      <button id="clearBtn" hidden>Видалити файли гри з браузера</button>
+    </div>
+  </div>
+</div>
+
+<div id="game"><canvas id="canvas" tabindex="-1"></canvas></div>
+
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+const READY_MARKER = '.ezeus-web-ready';
+// Not needed by eZeus: installers, Windows binaries, manuals, FMV videos.
+const SKIP_EXT = new Set(['exe', 'dll', 'pdf', 'zip', 'lnk', 'ico', 'asi', 'm3d', 'msg',
+  'hashdb', 'bik']);
+const SKIP_DIRS = new Set(['binks']);
+
+let runtimeReady = false;
+let filesReady = false;
+
+function setStatus(text, bad) {
+  $('status').textContent = text;
+  $('status').classList.toggle('bad', !!bad);
+}
+
+function refreshButtons() {
+  $('playBtn').disabled = !(runtimeReady && filesReady);
+  $('clearBtn').hidden = !filesReady;
+  if (!crossOriginIsolated) {
+    setStatus('Сторінка не cross-origin isolated (потрібні заголовки COOP/COEP). ' +
+      'Запустіть її через web/serve.py.', true);
+  } else if (!navigator.storage || !navigator.storage.getDirectory) {
+    setStatus('Цей браузер не підтримує OPFS. Потрібен свіжий Chrome, Edge, Firefox або Safari.', true);
+  } else if (!filesReady) {
+    setStatus(runtimeReady ? 'Рушій готовий. Тепер імпортуйте файли гри.' : 'Завантаження рушія…');
+  } else {
+    setStatus(runtimeReady ? 'Усе готово.' : 'Файли гри на місці, завантаження рушія…');
+  }
+}
+
+async function opfsRoot() { return navigator.storage.getDirectory(); }
+
+async function checkReady() {
+  try {
+    const root = await opfsRoot();
+    const ez = await root.getDirectoryHandle('eZeus');
+    await ez.getFileHandle(READY_MARKER);
+    filesReady = true;
+  } catch (e) { filesReady = false; }
+  refreshButtons();
+}
+
+// Maps a path relative to the chosen folder to its place in OPFS, or null to skip it.
+// ezeusDir is the top-level folder holding interface.e; it becomes "eZeus".
+function targetPath(parts, ezeusDir) {
+  const dirs = parts.slice(0, -1).map(d => d.toLowerCase());
+  const name = parts[parts.length - 1];
+  const ext = name.includes('.') ? name.split('.').pop().toLowerCase() : '';
+  if (SKIP_EXT.has(ext) || dirs.some(d => SKIP_DIRS.has(d))) return null;
+  if (parts.length > 1 && /^ezeus/i.test(parts[0])) {
+    if (parts[0] !== ezeusDir) return null;
+    parts = ['eZeus', ...parts.slice(1)];
+  }
+  return parts;
+}
+
+async function* walkHandle(dir, prefix) {
+  for await (const [name, handle] of dir.entries()) {
+    const parts = [...prefix, name];
+    if (handle.kind === 'directory') yield* walkHandle(handle, parts);
+    else yield { parts, getFile: () => handle.getFile() };
+  }
+}
+
+function* walkInput(files) {
+  for (const f of files) {
+    // webkitRelativePath starts with the chosen folder name; drop it.
+    const parts = f.webkitRelativePath.split('/').slice(1);
+    yield { parts, getFile: async () => f };
+  }
+}
+
+async function importFiles(entries) {
+  const all = [];
+  for await (const e of entries) all.push(e);
+  const iface = all.find(e => e.parts.length === 2 && /^ezeus/i.test(e.parts[0]) &&
+    e.parts[1].toLowerCase() === 'interface.e');
+  const ezeusDir = iface && iface.parts[0];
+  const list = [];
+  for (const e of all) {
+    const t = targetPath(e.parts, ezeusDir);
+    if (t) list.push({ ...e, target: t });
+  }
+  const has = p => list.some(e => e.target.join('/').toLowerCase() === p);
+  if (!has('ezeus/interface.e')) {
+    throw new Error('Не знайдено eZeus/interface.e. Виберіть папку Zeus and Poseidon, ' +
+      'у якій лежить папка eZeus.');
+  }
+  if (!has('zeus_text.eng')) {
+    throw new Error('Не знайдено Zeus_Text.eng. Виберіть корінь встановленої гри.');
+  }
+
+  $('progressCard').hidden = false;
+  $('pickBtn').disabled = true;
+  const root = await opfsRoot();
+  // A previous import may have been partial: drop the marker until done.
+  try { await (await root.getDirectoryHandle('eZeus')).removeEntry(READY_MARKER); } catch (e) {}
+
+  const files = await Promise.all(list.map(async e => ({ ...e, file: await e.getFile() })));
+  const total = files.reduce((s, e) => s + e.file.size, 0);
+  let done = 0;
+  const dirCache = new Map();
+  async function dirFor(parts) {
+    let handle = root, key = '';
+    for (const p of parts) {
+      key += '/' + p;
+      if (!dirCache.has(key)) dirCache.set(key, handle.getDirectoryHandle(p, { create: true }));
+      handle = await dirCache.get(key);
+    }
+    return handle;
+  }
+  // eGameDir resolves everything relative to eZeus/Bin, so it must exist.
+  await dirFor(['eZeus', 'Bin']);
+
+  async function copy(e) {
+    const dir = await dirFor(e.target.slice(0, -1));
+    const name = e.target[e.target.length - 1];
+    let skip = false;
+    try {
+      const existing = await (await dir.getFileHandle(name)).getFile();
+      skip = existing.size === e.file.size;
+    } catch (err) {}
+    if (!skip) {
+      const writable = await (await dir.getFileHandle(name, { create: true })).createWritable();
+      await (await e.file.stream()).pipeTo(writable);
+    }
+    done += e.file.size;
+    $('progress').value = total ? done / total : 1;
+    $('progressText').textContent =
+      `${(done / 2 ** 20).toFixed(0)} / ${(total / 2 ** 20).toFixed(0)} МБ — ${e.target.join('/')}`;
+  }
+  // Most files are small, so copy several at once.
+  const queue = files.slice();
+  await Promise.all(Array.from({ length: 8 }, async () => {
+    while (queue.length) await copy(queue.shift());
+  }));
+  const ez = await root.getDirectoryHandle('eZeus');
+  const marker = await (await ez.getFileHandle(READY_MARKER, { create: true })).createWritable();
+  await marker.write(new Date().toISOString());
+  await marker.close();
+  $('progressText').textContent = `Готово: ${files.length} файлів.`;
+  $('pickBtn').disabled = false;
+}
+
+async function runImport(entries) {
+  try {
+    if (navigator.storage.persist) navigator.storage.persist();
+    await importFiles(entries);
+  } catch (e) {
+    console.error(e);
+    setStatus(e.message || String(e), true);
+    $('pickBtn').disabled = false;
+    return;
+  }
+  await checkReady();
+}
+
+$('pickBtn').addEventListener('click', async () => {
+  if (window.showDirectoryPicker) {
+    let dir;
+    try { dir = await showDirectoryPicker({ id: 'zeus', mode: 'read' }); }
+    catch (e) { return; }
+    runImport(walkHandle(dir, []));
+  } else {
+    $('dirInput').click();
+  }
+});
+async function* walkServer(manifest) {
+  for (const f of manifest.files) {
+    const url = 'game/' + f.path.split('/').map(encodeURIComponent).join('/');
+    yield { parts: f.path.split('/'), getFile: async () => {
+      // Streams the file instead of buffering it; only .size and .stream() are used.
+      return { size: f.size, stream: () => fetch(url).then(r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}: ${f.path}`);
+        return r.body;
+      }) };
+    } };
+  }
+}
+
+$('serverBtn').addEventListener('click', async () => {
+  const manifest = await (await fetch('game-manifest.json')).json();
+  runImport(walkServer(manifest));
+});
+fetch('game-manifest.json')
+  .then(r => { if (r.ok) $('serverBtn').hidden = false; }).catch(() => {});
+
+$('dirInput').addEventListener('change', e => runImport(walkInput(e.target.files)));
+
+$('clearBtn').addEventListener('click', async () => {
+  if (!confirm('Видалити імпортовані файли гри (і збереження) з цього браузера?')) return;
+  const root = await opfsRoot();
+  for await (const [name] of root.entries()) await root.removeEntry(name, { recursive: true });
+  await checkReady();
+});
+
+$('playBtn').addEventListener('click', () => {
+  document.body.classList.add('playing');
+  $('canvas').focus();
+  Module.callMain([]);
+});
+
+$('canvas').addEventListener('contextmenu', e => e.preventDefault());
+
+var Module = {
+  canvas: $('canvas'),
+  print: (...a) => console.log(...a),
+  printErr: (...a) => console.warn(...a),
+  onRuntimeInitialized() { runtimeReady = true; refreshButtons(); },
+  onAbort(what) {
+    document.body.classList.remove('playing');
+    setStatus('Гра аварійно завершилась: ' + what, true);
+  },
+};
+
+checkReady();
+</script>
+{{{ SCRIPT }}}
+</body>
+</html>

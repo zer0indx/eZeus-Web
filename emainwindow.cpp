@@ -1,5 +1,9 @@
 #include "emainwindow.h"
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#endif
+
 #include "widgets/emainmenu.h"
 #include "widgets/esettingsmenu.h"
 #include "widgets/egamewidget.h"
@@ -570,7 +574,9 @@ int eMainWindow::exec() {
     int c = 0;
     int fpsVal = 0;
     bool resetRenderTargets = false;
-    while(!mQuit) {
+    // Captured by value so the state outlives exec() when the browser
+    // drives the loop through emscripten_set_main_loop.
+    auto frame = [=]() mutable {
         const auto fpsStart = high_resolution_clock::now();
 
         while(SDL_PollEvent(&e)) {
@@ -584,11 +590,13 @@ int eMainWindow::exec() {
                 const auto we = e.window.event;
                 if(we == SDL_WINDOWEVENT_MINIMIZED) {
                     resetRenderTargets = true;
+#ifndef __EMSCRIPTEN__
                     while(SDL_WaitEvent(&e)) {
                         if(e.window.event == SDL_WINDOWEVENT_RESTORED) {
                             break;
                         }
                     }
+#endif
                 } else if(we == SDL_WINDOWEVENT_EXPOSED) {
                     resetRenderTargets = true;
                 }
@@ -710,7 +718,12 @@ int eMainWindow::exec() {
         const duration<double, std::milli> fpsElapsed = fpsEnd - fpsStart;
         const duration<double, std::milli> fpsDuration(1000./fpsClamp);
         const duration<double, std::milli> fpsSleep(fpsDuration - fpsElapsed);
+#ifndef __EMSCRIPTEN__
         std::this_thread::sleep_for(fpsSleep);
+#else
+        (void)fpsSleep;
+        if(mQuit) emscripten_cancel_main_loop();
+#endif
 
         if(showFPS) {
             c++;
@@ -720,7 +733,16 @@ int eMainWindow::exec() {
                 fpsVal = (int)std::round(1000./fpsElapsed.count());
             }
         }
-    }
+    };
+
+#ifdef __EMSCRIPTEN__
+    const auto f = new std::function<void()>(std::move(frame));
+    emscripten_set_main_loop_arg([](void* const arg) {
+        (*static_cast<std::function<void()>*>(arg))();
+    }, f, fpsClamp, true);
+#else
+    while(!mQuit) frame();
+#endif
 
     return 0;
 }
