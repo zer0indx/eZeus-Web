@@ -39,7 +39,8 @@ The build uses WebAssembly threads, so the page has to be served with
 python web/serve.py build-web 8080 --game-dir "/path/to/Zeus and Poseidon"
 ```
 
-Open http://localhost:8080/eZeus.html. With `--game-dir` the page offers
+Open http://localhost:8080/eZeus.html on a computer: the game needs a mouse and
+keyboard, and phones and tablets only get a notice that they are not supported. With `--game-dir` the page offers
 "import from local server", which copies the game files without a folder
 picker. Without it, use "choose game folder".
 

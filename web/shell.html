@@ -194,6 +194,16 @@ const SKIP_DIRS = new Set(['binks']);
 // the .e files. DATA alone is ~370 MB.
 const EMPTY_DIRS = ['DATA'];
 
+// Phones and tablets: the game is played with a mouse and keyboard, and
+// mobile Safari hangs trying to start it. They get a notice instead of the
+// engine and the game files.
+const unsupported = (() => {
+  const ua = navigator.userAgent;
+  const ios = /iPhone|iPad|iPod/.test(ua) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  return ios || /Android/.test(ua) || !matchMedia('(any-pointer: fine)').matches;
+})();
+
 let runtimeReady = false;
 let filesReady = false;
 let importing = false;
@@ -209,6 +219,16 @@ function setStatus(text, bad) {
 }
 
 function refreshButtons() {
+  if (unsupported) {
+    for (const id of ['playBtn', 'pickBtn', 'serverBtn', 'savesCard', 'importCard']) {
+      $(id).hidden = true;
+    }
+    // Lets a device that imported the files earlier free the space.
+    $('clearBtn').hidden = !filesReady;
+    setStatus('This device is not supported. eZeus Web needs a computer with a mouse ' +
+      'and keyboard.', true);
+    return;
+  }
   const waitingForSaves = !!(hosted && hosted.sync) && !savesSynced;
   $('playBtn').disabled = !(runtimeReady && filesReady) || importing || waitingForSaves;
   $('clearBtn').hidden = !filesReady;
@@ -923,6 +943,9 @@ var Module = {
   } catch (e) {}
   applyHosting();
   refreshButtons();
+  if (unsupported) return;
+  // The engine is only loaded on devices that can run it.
+  document.body.appendChild($('engine').content.cloneNode(true));
   if (hosted && hosted.sync) startSync();
 
   let manifest = null;
@@ -940,6 +963,6 @@ var Module = {
   }
 })();
 </script>
-{{{ SCRIPT }}}
+<template id="engine">{{{ SCRIPT }}}</template>
 </body>
 </html>
