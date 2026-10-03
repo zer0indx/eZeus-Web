@@ -12,7 +12,7 @@ Configuration (environment variables):
   EZEUS_GAME_SOURCE     "server": game files are taken from EZEUS_GAME_DIR
                         "local" (default): each browser picks a game folder
   EZEUS_GAME_DIR        Zeus and Poseidon folder (default /game)
-  EZEUS_DATA_DIR        saves, session secret, start page art (default /data)
+  EZEUS_DATA_DIR        saves, session secret, the game font (default /data)
   EZEUS_APP_DIR         folder with eZeus.html, eZeus.js, eZeus.wasm
   EZEUS_PORT            port to listen on (default 8080)
   EZEUS_SESSION_DAYS    how long a sign-in lasts (default 30)
@@ -337,30 +337,18 @@ class GameFiles:
         return self.files.get(rel)
 
 
-def extract_start_page_art(game_dir, app_dir, data_dir):
-    """Copies the menu painting and font from the game files to data/assets."""
+def copy_game_font(game_dir, data_dir):
+    """Copies the Zeus font from the game files to data/assets."""
     ezeus = gamefiles.find_ezeus_dir(game_dir)
-    index_path = os.path.join(app_dir, "assets-index.json")
-    if not ezeus or not os.path.isfile(index_path):
+    font = os.path.join(game_dir, ezeus or "", "Fonts", "Zeus.ttf")
+    if not ezeus or not os.path.isfile(font):
         return
     out_dir = os.path.join(data_dir, "assets")
-    os.makedirs(out_dir, exist_ok=True)
-    with open(index_path, encoding="utf-8") as f:
-        index = json.load(f)
-    for name, entry in index.items():
-        try:
-            with open(os.path.join(game_dir, ezeus, entry["file"]), "rb") as src:
-                src.seek(entry["pos"])
-                data = src.read(entry["size"])
-            if data[:3] != b"\xff\xd8\xff":
-                continue  # another eZeus version; the page falls back
-            with open(os.path.join(out_dir, name), "wb") as dst:
-                dst.write(data)
-        except OSError as e:
-            print(f"Start page art {name} not extracted: {e}", flush=True)
-    font = os.path.join(game_dir, ezeus, "Fonts", "Zeus.ttf")
-    if os.path.isfile(font):
+    try:
+        os.makedirs(out_dir, exist_ok=True)
         shutil.copyfile(font, os.path.join(out_dir, "Zeus.ttf"))
+    except OSError as e:
+        print(f"Zeus font not copied: {e}", flush=True)
 
 
 # --- HTTP -------------------------------------------------------------------
@@ -395,7 +383,7 @@ class App:
                 sys.exit(f"No eZeus folder with interface.e in {game_dir}; mount your "
                          "Zeus and Poseidon folder there or set EZEUS_GAME_SOURCE=local")
             self.game = GameFiles(game_dir)
-            extract_start_page_art(game_dir, self.app_dir, self.data_dir)
+            copy_game_font(game_dir, self.data_dir)
 
         secret = env("EZEUS_SECRET")
         if secret:
@@ -546,6 +534,13 @@ class Handler(http.server.BaseHTTPRequestHandler):
         path, _ = self.route()
         if path == "/healthz":
             return self.send_bytes(200, b"ok", "text/plain")
+        if path.startswith("/static/"):
+            # The project's own art, also shown on the sign-in page.
+            name = path[len("/static/"):]
+            full = os.path.join(self.app.app_dir, "static", name)
+            if "/" in name or name.startswith(".") or not os.path.isfile(full):
+                return self.send_error_json(404, "not found")
+            return self.send_file(full)
         user = self.session_user()
         if path == "/login":
             if user:
@@ -591,7 +586,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         name = path.lstrip("/")
         if name and "/" not in name and not name.startswith("."):
             full = os.path.join(self.app.app_dir, name)
-            if os.path.isfile(full) and name != "assets-index.json":
+            if os.path.isfile(full):
                 return self.send_file(full)
         return self.send_error_json(404, "not found")
 

@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>eZeus Web</title>
 <style>
-  /* Styled after the game's own menus: blue framed buttons over the main
-     menu painting, and blue message panels with a light inner rim. The
-     painting and the Zeus font are in assets/ (web/extract_assets.py);
-     without them a drawn landscape and a serif font stand in. */
+  /* Styled after the game's own menus: blue framed buttons over a painting,
+     and blue message panels with a light inner rim. The Zeus font comes from
+     the game files (assets/, see web/extract_assets.py); without it a serif
+     font stands in. */
   @font-face { font-family: "Zeus"; src: url(assets/Zeus.ttf) format("truetype"); }
   :root {
     --sky-top: #6c7bd6; --sky-bottom: #b9c3ee;
@@ -18,8 +18,7 @@
     --title: #fff3c4; --text: #eef8ff; --muted: #bfe0f5; --bad: #ffb09a;
     --gold: #f2c84b;
     --zeus: "Zeus", "Trajan Pro", "Cinzel", "Palatino Linotype", Palatino, Georgia, serif;
-    /* Without assets/menu.jpg: sky, lavender mountains and a hill in the
-       colours of the main menu painting. */
+    /* Shown until static/background.jpg loads. */
     --landscape:
       radial-gradient(90% 38% at 20% 108%, #8d6a46 0 60%, #0000 60.5%),
       radial-gradient(80% 32% at 85% 104%, #6f7f3e 0 60%, #0000 60.5%),
@@ -39,7 +38,7 @@
     padding: 6vh 16px 32px;
     background:
       linear-gradient(to bottom, #0000 55%, #0006),
-      url(assets/menu.jpg),
+      url(static/background.jpg),
       var(--landscape);
     background-size: cover; background-position: center bottom;
   }
