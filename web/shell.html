@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="uk">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -50,15 +50,15 @@
 <body>
 <div id="setup">
   <h1>eZeus</h1>
-  <p class="sub">Zeus: Master of Olympus у браузері (WebAssembly)</p>
+  <p class="sub">Zeus: Master of Olympus in the browser (WebAssembly)</p>
 
   <div class="card" id="importCard">
-    <p>Виберіть папку <b>Zeus and Poseidon</b>, у якій лежить і оригінальна гра, і папка eZeus
-      (<code>eZeus-…</code> з <code>interface.e</code>, <code>i30.e</code>). Файли
-      копіюються в сховище цього браузера (OPFS), тож це треба зробити лише один раз.</p>
+    <p>Choose your <b>Zeus and Poseidon</b> folder, containing both the original game and
+      the eZeus folder (<code>eZeus-…</code> with <code>interface.e</code>, <code>i30.e</code>).
+      The files are copied into this browser's storage (OPFS), so this is needed only once.</p>
     <div class="row">
-      <button class="primary" id="pickBtn">Вибрати папку гри</button>
-      <button id="serverBtn" hidden>Імпортувати з локального сервера</button>
+      <button class="primary" id="pickBtn">Choose game folder</button>
+      <button id="serverBtn" hidden>Import from local server</button>
       <input type="file" id="dirInput" webkitdirectory multiple hidden>
     </div>
   </div>
@@ -71,8 +71,8 @@
   <div class="card">
     <p id="status">Loading engine…</p>
     <div class="row">
-      <button class="primary" id="playBtn" disabled>Грати</button>
-      <button id="clearBtn" hidden>Видалити файли гри з браузера</button>
+      <button class="primary" id="playBtn" disabled>Play</button>
+      <button id="clearBtn" hidden>Remove game files from browser</button>
     </div>
   </div>
 </div>
@@ -103,14 +103,14 @@ function refreshButtons() {
   $('playBtn').disabled = !(runtimeReady && filesReady);
   $('clearBtn').hidden = !filesReady;
   if (!crossOriginIsolated) {
-    setStatus('Сторінка не cross-origin isolated (потрібні заголовки COOP/COEP). ' +
-      'Запустіть її через web/serve.py.', true);
+    setStatus('The page is not cross-origin isolated (COOP/COEP headers are required). ' +
+      'Serve it with web/serve.py.', true);
   } else if (!navigator.storage || !navigator.storage.getDirectory) {
-    setStatus('Цей браузер не підтримує OPFS. Потрібен свіжий Chrome, Edge, Firefox або Safari.', true);
+    setStatus('This browser does not support OPFS. Use a recent Chrome, Edge, Firefox or Safari.', true);
   } else if (!filesReady) {
-    setStatus(runtimeReady ? 'Рушій готовий. Тепер імпортуйте файли гри.' : 'Loading engine…');
+    setStatus(runtimeReady ? 'Engine ready. Now import the game files.' : 'Loading engine…');
   } else {
-    setStatus(runtimeReady ? 'Усе готово.' : 'Loading engine…');
+    setStatus(runtimeReady ? 'Ready.' : 'Loading engine…');
   }
 }
 
@@ -169,11 +169,11 @@ async function importFiles(entries) {
   }
   const has = p => list.some(e => e.target.join('/').toLowerCase() === p);
   if (!has('ezeus/interface.e')) {
-    throw new Error('Не знайдено eZeus/interface.e. Виберіть папку Zeus and Poseidon, ' +
-      'у якій лежить папка eZeus.');
+    throw new Error('eZeus/interface.e not found. Choose the Zeus and Poseidon folder ' +
+      'that contains the eZeus folder.');
   }
   if (!has('zeus_text.eng')) {
-    throw new Error('Не знайдено Zeus_Text.eng. Виберіть корінь встановленої гри.');
+    throw new Error('Zeus_Text.eng not found. Choose the root folder of the installed game.');
   }
 
   $('progressCard').hidden = false;
@@ -274,7 +274,7 @@ fetch('game-manifest.json')
 $('dirInput').addEventListener('change', e => runImport(walkInput(e.target.files)));
 
 $('clearBtn').addEventListener('click', async () => {
-  if (!confirm('Видалити імпортовані файли гри (і збереження) з цього браузера?')) return;
+  if (!confirm('Remove the imported game files (and saves) from this browser?')) return;
   const root = await opfsRoot();
   for await (const [name] of root.entries()) await root.removeEntry(name, { recursive: true });
   await checkReady();
@@ -323,7 +323,7 @@ var Module = {
   onRuntimeInitialized() { runtimeReady = true; refreshButtons(); },
   onAbort(what) {
     document.body.classList.remove('playing');
-    setStatus('Гра аварійно завершилась: ' + what, true);
+    setStatus('The game crashed: ' + what, true);
   },
 };
 
