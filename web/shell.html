@@ -69,7 +69,7 @@
   </div>
 
   <div class="card">
-    <p id="status">Завантаження рушія…</p>
+    <p id="status">Loading engine…</p>
     <div class="row">
       <button class="primary" id="playBtn" disabled>Грати</button>
       <button id="clearBtn" hidden>Видалити файли гри з браузера</button>
@@ -79,7 +79,7 @@
 
 <div id="game">
   <canvas id="canvas" tabindex="-1"></canvas>
-  <div id="busy" hidden><div class="spinner"></div>Завантаження…</div>
+  <div id="busy" hidden><div class="spinner"></div>Loading…</div>
 </div>
 
 <script>
@@ -108,9 +108,9 @@ function refreshButtons() {
   } else if (!navigator.storage || !navigator.storage.getDirectory) {
     setStatus('Цей браузер не підтримує OPFS. Потрібен свіжий Chrome, Edge, Firefox або Safari.', true);
   } else if (!filesReady) {
-    setStatus(runtimeReady ? 'Рушій готовий. Тепер імпортуйте файли гри.' : 'Завантаження рушія…');
+    setStatus(runtimeReady ? 'Рушій готовий. Тепер імпортуйте файли гри.' : 'Loading engine…');
   } else {
-    setStatus(runtimeReady ? 'Усе готово.' : 'Файли гри на місці, завантаження рушія…');
+    setStatus(runtimeReady ? 'Усе готово.' : 'Loading engine…');
   }
 }
 
@@ -213,7 +213,7 @@ async function importFiles(entries) {
     done += e.file.size;
     $('progress').value = total ? done / total : 1;
     $('progressText').textContent =
-      `${(done / 2 ** 20).toFixed(0)} / ${(total / 2 ** 20).toFixed(0)} МБ — ${e.target.join('/')}`;
+      `${(done / 2 ** 20).toFixed(0)} / ${(total / 2 ** 20).toFixed(0)} MB — ${e.target.join('/')}`;
   }
   // Most files are small, so copy several at once.
   const queue = files.slice();
@@ -224,7 +224,7 @@ async function importFiles(entries) {
   const marker = await (await ez.getFileHandle(READY_MARKER, { create: true })).createWritable();
   await marker.write(new Date().toISOString());
   await marker.close();
-  $('progressText').textContent = `Готово: ${files.length} файлів.`;
+  $('progressText').textContent = `Done: ${files.length} files.`;
   $('pickBtn').disabled = false;
 }
 

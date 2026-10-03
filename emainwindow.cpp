@@ -502,17 +502,23 @@ void eMainWindow::showSettingsMenu() {
 }
 
 void eMainWindow::showChooseGameMenu() {
-    const auto gem = new eChooseGameEditMenu(this);
-    gem->resize(width(), height());
-    gem->initialize(false);
-    setWidget(gem);
+    // Reads the cover of every adventure.
+    runBusy([this]() {
+        const auto gem = new eChooseGameEditMenu(this);
+        gem->resize(width(), height());
+        gem->initialize(false);
+        setWidget(gem);
+    });
 }
 
 void eMainWindow::showChooseGameEditMenu() {
-    const auto gem = new eChooseGameEditMenu(this);
-    gem->resize(width(), height());
-    gem->initialize(true);
-    setWidget(gem);
+    // Reads the cover of every adventure.
+    runBusy([this]() {
+        const auto gem = new eChooseGameEditMenu(this);
+        gem->resize(width(), height());
+        gem->initialize(true);
+        setWidget(gem);
+    });
 }
 
 void eMainWindow::showGame(const stdsptr<eCampaign>& c,
@@ -660,7 +666,8 @@ int eMainWindow::exec() {
             const auto a = std::move(mBusyAction);
             mBusyAction = nullptr;
             a();
-            sSetBusy(false, true);
+            // The action may have queued more blocking work.
+            if(!mBusyAction) sSetBusy(false, true);
         }
         fitViewport();
 #endif

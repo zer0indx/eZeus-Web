@@ -4,13 +4,19 @@
 #include <string>
 #include <vector>
 #include <cstdint>
+#include <cstdio>
 
-// Read-only file loaded into memory at once. The pak parser reads mostly
+// Read-only file read through a block cache. The pak parser reads mostly
 // single bytes and asks for the position all the time, which is very slow
-// on a stream backed by browser storage.
+// on a plain stream backed by browser storage, while some callers only
+// need a few bytes from far into the file.
 class QFile {
 public:
     QFile(const std::string& filename);
+    ~QFile();
+
+    QFile(const QFile&) = delete;
+    QFile& operator=(const QFile&) = delete;
 
     void reset();
 
@@ -27,9 +33,14 @@ public:
 
     bool getChar(char* const data);
 private:
-    bool mOpen = false;
-    std::vector<char> mData;
+    bool loadBlock(const int64_t pos);
+
+    std::FILE* mFile = nullptr;
+    int64_t mSize = 0;
     int64_t mPos = 0;
+
+    std::vector<char> mBlock;
+    int64_t mBlockStart = -1;
 };
 
 #endif // QFILE_H
