@@ -1,11 +1,13 @@
-"""Builds a self-contained eZeus web client folder.
+"""Builds the eZeus web client and server folders.
 
-Usage: python web/make_client.py <Zeus and Poseidon folder> <output folder>
+Usage: python web/make_client.py <Zeus and Poseidon folder>
+                                 [--client DIR] [--server DIR]
                                  [--build-dir build-web]
 
-The output holds the web build, a local server, start.bat and only the game
-files eZeus needs (about 630 MB). On first launch the page imports them into
-the browser automatically. Running it again updates the folder, copying only
+The client folder holds only the game files eZeus needs (about 630 MB); it
+can be kept anywhere and is the folder to choose with "Choose game folder" on
+the start page. The server folder holds the web build, the local server and
+start.bat. Running the script again updates the folders, copying only
 changed files.
 
 The game files come from your own copy of the game; keep the client for
@@ -23,6 +25,7 @@ SKIP_DIRS = {"binks"}
 # eZeus only checks that these exist; their contents are never read.
 EMPTY_DIRS = ["DATA"]
 APP_FILES = ["eZeus.html", "eZeus.js", "eZeus.wasm"]
+PORT = 8765
 
 START_BAT = r"""@echo off
 rem Starts the local eZeus server and opens the game in the browser.
@@ -36,26 +39,36 @@ if not defined PY (
     exit /b 1
 )
 echo eZeus runs at http://localhost:%PORT%/ - keep this window open while playing.
-%PY% server.py app %PORT% --game-dir game --open
+%PY% server.py app %PORT% --open
 pause
-""".replace("%PORT%", "8765")
+""".replace("%PORT%", str(PORT))
 
-README = """eZeus Web client
+SERVER_README = f"""eZeus Web server
 ================
 
-Zeus: Master of Olympus (eZeus) running in the browser.
+Runs Zeus: Master of Olympus (eZeus) in the browser.
 
 Start: double-click start.bat (needs Python 3). It starts a local server at
-http://localhost:8765/ and opens the game. Keep the window open while playing.
+http://localhost:{PORT}/ and opens the game. Keep the window open while
+playing.
 
-The first launch copies the game files (~630 MB) into the browser's storage;
-later launches start right away. Saves are kept in the browser: use
+On the first launch click "Choose game folder" and pick the eZeus Client
+folder; its files are copied into the browser's storage (~630 MB), so later
+launches start right away. Saves are kept in the browser: use
 "Download saves" / "Upload saves" on the start page to back them up.
 
 Use a recent Chrome, Edge or Firefox.
+"""
 
-The game files come from your own copy of Zeus and Poseidon; do not share
-this folder publicly.
+# Not README.txt: the game has its own Readme.txt and Windows ignores case.
+CLIENT_README_NAME = "README-eZeus-Client.txt"
+CLIENT_README = """eZeus Client
+============
+
+The game files eZeus needs, taken from your copy of Zeus and Poseidon.
+Pick this folder with "Choose game folder" on the eZeus start page.
+
+Do not share this folder publicly.
 """
 
 
@@ -90,41 +103,32 @@ def copy_if_changed(src, dst):
     return True
 
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("game_dir")
-    parser.add_argument("out_dir")
-    parser.add_argument("--build-dir",
-                        default=os.path.join(os.path.dirname(__file__), "..", "build-web"))
-    args = parser.parse_args()
+def write_text(path, text):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", newline="\r\n") as f:
+        f.write(text)
 
-    game_dir = os.path.abspath(args.game_dir)
-    out_dir = os.path.abspath(args.out_dir)
-    build_dir = os.path.abspath(args.build_dir)
-    web_dir = os.path.dirname(os.path.abspath(__file__))
 
+def make_server(server_dir, build_dir, web_dir):
+    for f in APP_FILES:
+        if not os.path.isfile(os.path.join(build_dir, f)):
+            sys.exit(f"{f} missing in {build_dir}; build the web version first")
+    for f in APP_FILES:
+        copy_if_changed(os.path.join(build_dir, f), os.path.join(server_dir, "app", f))
+    copy_if_changed(os.path.join(web_dir, "serve.py"), os.path.join(server_dir, "server.py"))
+    write_text(os.path.join(server_dir, "start.bat"), START_BAT)
+    write_text(os.path.join(server_dir, "README.txt"), SERVER_README)
+    print(f"Server in {server_dir}; start it with start.bat")
+
+
+def make_client(client_dir, game_dir):
     ezeus = find_ezeus_dir(game_dir)
     if not ezeus:
         sys.exit(f"No eZeus folder with interface.e found in {game_dir}")
     if not os.path.isdir(os.path.join(game_dir, "Audio", "Wavs")):
         sys.exit(f"{game_dir} does not look like a Zeus and Poseidon installation")
-    for f in APP_FILES:
-        if not os.path.isfile(os.path.join(build_dir, f)):
-            sys.exit(f"{f} missing in {build_dir}; build the web version first")
-    if out_dir == game_dir or out_dir.startswith(game_dir + os.sep):
-        sys.exit("The output folder must be outside the game folder")
 
-    app_out = os.path.join(out_dir, "app")
-    game_out = os.path.join(out_dir, "game")
-    for f in APP_FILES:
-        copy_if_changed(os.path.join(build_dir, f), os.path.join(app_out, f))
-    copy_if_changed(os.path.join(web_dir, "serve.py"), os.path.join(out_dir, "server.py"))
-    with open(os.path.join(out_dir, "start.bat"), "w", newline="\r\n") as f:
-        f.write(START_BAT)
-    with open(os.path.join(out_dir, "README.txt"), "w", newline="\r\n") as f:
-        f.write(README)
-
-    wanted = set()
+    wanted = {os.path.normcase(os.path.join(client_dir, CLIENT_README_NAME))}
     copied = total = 0
     for root, dirs, files in os.walk(game_dir):
         rel_root = os.path.relpath(root, game_dir)
@@ -140,27 +144,50 @@ def main():
             if parts[0] == ezeus:
                 parts[0] = "eZeus"
             src = os.path.join(root, name)
-            dst = os.path.join(game_out, *parts)
+            dst = os.path.join(client_dir, *parts)
             wanted.add(os.path.normcase(dst))
             total += os.path.getsize(src)
             if copy_if_changed(src, dst):
                 copied += 1
     for d in EMPTY_DIRS + [os.path.join("eZeus", "Bin"), os.path.join("eZeus", "Save")]:
-        os.makedirs(os.path.join(game_out, d), exist_ok=True)
+        os.makedirs(os.path.join(client_dir, d), exist_ok=True)
+    write_text(os.path.join(client_dir, CLIENT_README_NAME), CLIENT_README)
 
     # Drop files that are no longer needed, e.g. after a rule change.
     removed = 0
-    for root, _, files in os.walk(game_out):
+    for root, _, files in os.walk(client_dir):
         for name in files:
             path = os.path.join(root, name)
             if os.path.normcase(path) not in wanted:
                 os.remove(path)
                 removed += 1
+    print(f"Client in {client_dir}: {len(wanted) - 1} game files "
+          f"({total / 2**20:.0f} MB), copied {copied}, removed {removed}")
 
-    print(f"Client in {out_dir}")
-    print(f"Game files: {len(wanted)} ({total / 2**20:.0f} MB), "
-          f"copied {copied}, removed {removed}")
-    print(f"Start it with {os.path.join(out_dir, 'start.bat')}")
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("game_dir")
+    parser.add_argument("--client", help="folder for the game files")
+    parser.add_argument("--server", help="folder for the web build and server")
+    parser.add_argument("--build-dir",
+                        default=os.path.join(os.path.dirname(__file__), "..", "build-web"))
+    args = parser.parse_args()
+    if not args.client and not args.server:
+        parser.error("give --client, --server or both")
+
+    game_dir = os.path.abspath(args.game_dir)
+    web_dir = os.path.dirname(os.path.abspath(__file__))
+    for out in (args.client, args.server):
+        if out:
+            out = os.path.abspath(out)
+            if out == game_dir or out.startswith(game_dir + os.sep):
+                sys.exit("Output folders must be outside the game folder")
+
+    if args.server:
+        make_server(os.path.abspath(args.server), os.path.abspath(args.build_dir), web_dir)
+    if args.client:
+        make_client(os.path.abspath(args.client), game_dir)
 
 
 if __name__ == "__main__":

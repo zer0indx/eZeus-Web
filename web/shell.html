@@ -55,8 +55,8 @@
   <p class="sub">Zeus: Master of Olympus in the browser (WebAssembly)</p>
 
   <div class="card" id="importCard">
-    <p>Choose your <b>Zeus and Poseidon</b> folder, containing both the original game and
-      the eZeus folder (<code>eZeus-…</code> with <code>interface.e</code>, <code>i30.e</code>).
+    <p>Choose the <b>eZeus Client</b> folder, or your <b>Zeus and Poseidon</b> folder with the
+      eZeus folder (<code>eZeus-…</code> with <code>interface.e</code>, <code>i30.e</code>) inside.
       The files are copied into this browser's storage (OPFS), so this is needed only once.</p>
     <div class="row">
       <button class="primary" id="pickBtn">Choose game folder</button>
@@ -209,11 +209,12 @@ async function importFiles(entries) {
   const has = p => list.some(e => e.target.join('/').toLowerCase() === p);
   const hasDir = p => list.some(e => e.target.join('/').toLowerCase().startsWith(p));
   if (!has('ezeus/interface.e')) {
-    throw new Error('eZeus/interface.e not found. Choose the Zeus and Poseidon folder ' +
-      'that contains the eZeus folder.');
+    throw new Error('eZeus/interface.e not found. Choose the eZeus Client folder, or the ' +
+      'Zeus and Poseidon folder that contains the eZeus folder.');
   }
   if (!hasDir('audio/wavs/')) {
-    throw new Error('Audio/Wavs not found. Choose the root folder of the installed game.');
+    throw new Error('Audio/Wavs not found. Choose the eZeus Client folder, or the root ' +
+      'folder of the installed game.');
   }
 
   $('progressCard').hidden = false;

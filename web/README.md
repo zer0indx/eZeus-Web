@@ -42,20 +42,21 @@ Saves stay in the browser. "Download saves" on the start page packs them into
 a ZIP; "Upload saves" adds the saves from such a ZIP. Re-importing the game
 folder never replaces saves already in the browser.
 
-## Standalone client
+## Client and server folders
 
-`make_client.py` builds a folder with the web build, the server, `start.bat`
-and only the game files eZeus needs:
+`make_client.py` builds two folders that can be kept apart:
 
 ```bash
-python web/make_client.py "/path/to/Zeus and Poseidon" "/path/to/eZeus Web"
+python web/make_client.py "/path/to/Zeus and Poseidon" --client "/path/to/eZeus Client" --server "/path/to/eZeus Server"
 ```
 
-Double-clicking `start.bat` in it (Python 3 required) starts the server on
-port 8765 and opens the game; the first launch imports the files into the
-browser by itself. Running the script again updates the folder and copies
-only changed files. The game files come from your own copy of the game, so
-keep the client to yourself.
+- The client holds only the game files eZeus needs (~630 MB). It is the
+  folder to pick with "Choose game folder" on the start page.
+- The server holds the web build, the server and `start.bat`, which (with
+  Python 3) starts it on port 8765 and opens the game.
+
+Running the script again updates the folders, copying only changed files.
+The client comes from your own copy of the game, so keep it to yourself.
 
 ## How the port works
 
