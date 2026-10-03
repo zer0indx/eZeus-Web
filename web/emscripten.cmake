@@ -61,3 +61,11 @@ set_target_properties(eZeus PROPERTIES
     SUFFIX ".html"
     LINK_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/web/shell.html
 )
+
+# Start page art (web/assets, made by web/extract_assets.py), copied next to
+# the page on every build.
+add_custom_target(web_assets ALL
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_SOURCE_DIR}/web/assets
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+            ${CMAKE_CURRENT_SOURCE_DIR}/web/assets ${CMAKE_BINARY_DIR}/assets
+)

@@ -7,7 +7,9 @@
 <style>
   /* Styled after the game's own menus: blue framed buttons over the main
      menu painting, and blue message panels with a light inner rim. The
-     painting and the Zeus font are read from the imported game files. */
+     painting and the Zeus font are in assets/ (web/extract_assets.py);
+     without them a drawn landscape and a serif font stand in. */
+  @font-face { font-family: "Zeus"; src: url(assets/Zeus.ttf) format("truetype"); }
   :root {
     --sky-top: #6c7bd6; --sky-bottom: #b9c3ee;
     --btn: #3586c4; --btn-hi: #9fd8f4; --btn-lo: #154772; --btn-text: #eef8ff;
@@ -16,8 +18,8 @@
     --title: #fff3c4; --text: #eef8ff; --muted: #bfe0f5; --bad: #ffb09a;
     --gold: #f2c84b;
     --zeus: "Zeus", "Trajan Pro", "Cinzel", "Palatino Linotype", Palatino, Georgia, serif;
-    /* Until the game files are imported: sky, lavender mountains and a hill
-       in the colours of the main menu painting. */
+    /* Without assets/menu.jpg: sky, lavender mountains and a hill in the
+       colours of the main menu painting. */
     --landscape:
       radial-gradient(90% 38% at 20% 108%, #8d6a46 0 60%, #0000 60.5%),
       radial-gradient(80% 32% at 85% 104%, #6f7f3e 0 60%, #0000 60.5%),
@@ -37,7 +39,8 @@
     padding: 6vh 16px 32px;
     background:
       linear-gradient(to bottom, #0000 55%, #0006),
-      var(--art, var(--landscape));
+      url(assets/menu.jpg),
+      var(--landscape);
     background-size: cover; background-position: center bottom;
   }
 
@@ -223,31 +226,6 @@ async function pruneUnneeded() {
   }
 }
 
-// The main menu painting and the Zeus font, read from the imported files.
-// The offset is where eZeus keeps Zeus_FE_Registry.jpg in interface.e
-// (see esplitbinary.h); the JPEG signature check skips other versions.
-const MENU_ART = { file: 'interface.e', pos: 62065190, size: 421191 };
-let artLoaded = false;
-async function loadGameArt() {
-  if (artLoaded) return;
-  artLoaded = true;
-  const ez = await (await opfsRoot()).getDirectoryHandle('eZeus');
-  try {
-    const font = await (await (await ez.getDirectoryHandle('Fonts'))
-      .getFileHandle('Zeus.ttf')).getFile();
-    const face = new FontFace('Zeus', await font.arrayBuffer());
-    document.fonts.add(await face.load());
-  } catch (e) { console.warn('Zeus font not loaded', e); }
-  try {
-    const file = await (await ez.getFileHandle(MENU_ART.file)).getFile();
-    const jpg = file.slice(MENU_ART.pos, MENU_ART.pos + MENU_ART.size, 'image/jpeg');
-    const sig = new Uint8Array(await jpg.slice(0, 3).arrayBuffer());
-    if (sig[0] === 0xff && sig[1] === 0xd8 && sig[2] === 0xff) {
-      $('setup').style.setProperty('--art', `url(${URL.createObjectURL(jpg)})`);
-    }
-  } catch (e) { console.warn('Menu art not loaded', e); }
-}
-
 async function checkReady() {
   try {
     const root = await opfsRoot();
@@ -255,10 +233,7 @@ async function checkReady() {
     await ez.getFileHandle(READY_MARKER);
     filesReady = true;
   } catch (e) { filesReady = false; }
-  if (filesReady) {
-    await pruneUnneeded().catch(e => console.warn(e));
-    loadGameArt().catch(e => console.warn(e));
-  }
+  if (filesReady) await pruneUnneeded().catch(e => console.warn(e));
   refreshButtons();
 }
 

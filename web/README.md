@@ -19,6 +19,16 @@ cmake --build build-web
 
 The output is `build-web/eZeus.html`, `eZeus.js` and `eZeus.wasm`.
 
+The start page shows the game's main menu painting and Zeus font. They come
+from the game files, so they are not in git; copy them into `web/assets` once
+(the build puts them next to the page):
+
+```bash
+python web/extract_assets.py "/path/to/Zeus and Poseidon/eZeus-0.8.2-beta"
+```
+
+Without them the page falls back to a drawn landscape and a serif font.
+
 ## Run
 
 The build uses WebAssembly threads, so the page has to be served with

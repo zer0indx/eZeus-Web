@@ -76,3 +76,4 @@ CMakeLists.txt.user*
 
 # Emscripten build
 /build-web/
+/web/assets/
