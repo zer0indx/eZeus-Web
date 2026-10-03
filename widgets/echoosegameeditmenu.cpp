@@ -298,24 +298,24 @@ void eChooseGameEditMenu::initialize(const bool editor) {
         if(!mSelected.fIsPak && mSelected.fFolderName.empty()) return;
         if(mSelected.fIsPak && mSelected.fPakPath.empty()) return;
         const auto w = window();
-
-        if(editor) {
-            const auto e = new eEditorMainMenu(window());
-            e->resize(w->width(), w->height());
+        // Reading the adventure takes a while; this widget may be gone by
+        // the time it runs, so copy what is needed.
+        const auto selected = mSelected;
+        w->runBusy([w, selected, editor]() {
             const auto c = std::make_shared<eCampaign>();
-            if(mSelected.fIsPak) c->readPak(mSelected.fTitle,
-                                            mSelected.fPakPath);
-            else c->load(mSelected.fFolderName);
-            c->setEditorMode(true);
-            e->initialize(c);
-            w->setWidget(e);
-        } else {
-            const auto c = std::make_shared<eCampaign>();
-            if(mSelected.fIsPak) c->readPak(mSelected.fTitle,
-                                            mSelected.fPakPath);
-            else c->load(mSelected.fFolderName);
-            w->showEpisodeIntroduction(c);
-        }
+            if(selected.fIsPak) c->readPak(selected.fTitle,
+                                           selected.fPakPath);
+            else c->load(selected.fFolderName);
+            if(editor) {
+                const auto e = new eEditorMainMenu(w);
+                e->resize(w->width(), w->height());
+                c->setEditorMode(true);
+                e->initialize(c);
+                w->setWidget(e);
+            } else {
+                w->showEpisodeIntroduction(c);
+            }
+        });
     });
     proceedW->addWidget(proceedB);
 

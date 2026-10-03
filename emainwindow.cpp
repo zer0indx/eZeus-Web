@@ -166,6 +166,29 @@ void eMainWindow::fitViewport() {
 }
 #endif
 
+void eMainWindow::runBusy(const eAction& a) {
+#ifdef __EMSCRIPTEN__
+    sSetBusy(true, true);
+    // Run it a couple of frames later so the browser shows the indicator.
+    mBusyAction = a;
+    mBusyFrames = 2;
+#else
+    a();
+#endif
+}
+
+void eMainWindow::sSetBusy(const bool busy, const bool indicator) {
+#ifdef __EMSCRIPTEN__
+    // SDL feeds audio from the main thread; while it is blocked the browser
+    // keeps repeating the last buffer, so suspend audio instead.
+    EM_ASM({ if(Module.setBusy) Module.setBusy(!!$0, !!$1); },
+           busy, indicator);
+#else
+    (void)busy;
+    (void)indicator;
+#endif
+}
+
 void eMainWindow::startGameAction(eGameBoard* const board,
                                   const eGameWidgetSettings& settings) {
     const auto show = [this, board, settings]() {
@@ -197,13 +220,15 @@ void eMainWindow::showEpisodeIntroduction(
     if(c) mCampaign = c;
     const auto e = new eEpisodeIntroductionWidget(this);
     const auto proceedA = [this]() {
-        mCampaign->startEpisode();
-        const auto dir = leaderSaveDir();
-        saveGame(dir + "autosave replay.ez");
-        startGameAction([this]() {
-            eGameWidgetSettings settings;
-            settings.fPaused = true;
-            showGame(mCampaign, settings);
+        runBusy([this]() {
+            mCampaign->startEpisode();
+            const auto dir = leaderSaveDir();
+            saveGame(dir + "autosave replay.ez");
+            startGameAction([this]() {
+                eGameWidgetSettings settings;
+                settings.fPaused = true;
+                showGame(mCampaign, settings);
+            });
         });
     };
     e->resize(width(), height());
@@ -323,9 +348,15 @@ bool eMainWindow::saveGame(const std::string& path) {
 }
 
 bool eMainWindow::loadGame(const std::string& path) {
-    std::ifstream file(path, std::ios::in | std::ios::binary);
+    // Read the whole file at once; the many small reads below are slow on
+    // browser storage.
+    std::ifstream file(path, std::ios::in | std::ios::binary | std::ios::ate);
     if(!file) return false;
-    eReadSource source(&file);
+    std::vector<char> data(static_cast<size_t>(file.tellg()));
+    file.seekg(0);
+    file.read(data.data(), data.size());
+    file.close();
+    eReadSource source(data.data());
     eReadStream src(source);
     src.readFormat();
     const auto& format = src.format();
@@ -346,7 +377,6 @@ bool eMainWindow::loadGame(const std::string& path) {
     c->loadStrings();
     c->loadNumbers();
     src.handlePostFuncs();
-    file.close();
 
     startGameAction(c, s);
     return true;
@@ -626,6 +656,12 @@ int eMainWindow::exec() {
     auto frame = [=]() mutable {
         const auto fpsStart = high_resolution_clock::now();
 #ifdef __EMSCRIPTEN__
+        if(mBusyAction && --mBusyFrames <= 0) {
+            const auto a = std::move(mBusyAction);
+            mBusyAction = nullptr;
+            a();
+            sSetBusy(false, true);
+        }
         fitViewport();
 #endif
 

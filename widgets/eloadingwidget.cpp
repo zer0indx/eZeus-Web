@@ -90,10 +90,13 @@ void eLoadingWidget::setLoadImage(const int id) {
 }
 
 void eLoadingWidget::paintEvent(ePainter& p) {
+    // Each step blocks for a moment; keep audio quiet instead of stuttering.
+    eMainWindow::sSetBusy(true, false);
     std::string text;
     const bool r = mLoader(text);
     if(r) {
         if(mDoneAction) mDoneAction();
+        eMainWindow::sSetBusy(false, false);
     } else {
         mPB->setValue(mPB->value() + 1);
         mLabel->setText(text);

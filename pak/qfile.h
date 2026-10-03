@@ -1,9 +1,14 @@
 #ifndef QFILE_H
 #define QFILE_H
 
-#include <fstream>
+#include <string>
+#include <vector>
+#include <cstdint>
 
-class QFile : private std::ifstream {
+// Read-only file loaded into memory at once. The pak parser reads mostly
+// single bytes and asks for the position all the time, which is very slow
+// on a stream backed by browser storage.
+class QFile {
 public:
     QFile(const std::string& filename);
 
@@ -12,7 +17,7 @@ public:
     bool isReadable();
     bool atEnd();
 
-    using std::ifstream::close;
+    void close();
     int64_t size() const;
     int64_t pos();
 
@@ -22,7 +27,9 @@ public:
 
     bool getChar(char* const data);
 private:
-    std::streampos mSize;
+    bool mOpen = false;
+    std::vector<char> mData;
+    int64_t mPos = 0;
 };
 
 #endif // QFILE_H

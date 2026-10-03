@@ -1,6 +1,6 @@
 #include "ebinaryimageloader.h"
 
-#include <fstream>
+#include <cstdio>
 
 #include "esplitbinary.h"
 #include "egamedir.h"
@@ -32,16 +32,18 @@ std::shared_ptr<eTexture> eBinaryImageLoader::load(SDL_Renderer* const r,
         break;
     }
 
-    std::ifstream file(epath, std::ios::in | std::ios::binary);
+    // stdio reads the whole image in one call; std::ifstream splits it into
+    // small buffered reads, which are very slow on browser storage.
+    const auto file = std::fopen(epath.c_str(), "rb");
     if(!file) {
         printf("Could not open '%s'\n", epath.c_str());
         return nullptr;
     }
 
     const auto data = new char[bd.fSize];
-    file.seekg(bd.fPos);
-    file.read(data, bd.fSize);
-    file.close();
+    std::fseek(file, bd.fPos, SEEK_SET);
+    std::fread(data, 1, bd.fSize, file);
+    std::fclose(file);
     const auto rw = SDL_RWFromMem(data, bd.fSize);
     const auto surf = IMG_Load_RW(rw, SDL_FALSE);
     if(!surf) {

@@ -34,6 +34,17 @@
   #canvas { display: block; outline: none; }
   body.playing #setup { display: none; }
   body.playing #game { display: flex; }
+  /* Shown while the game blocks the main thread. Only a transform animates,
+     so the browser keeps spinning it even then. */
+  #busy { position: fixed; left: 50%; top: 50%; z-index: 10; pointer-events: none;
+    transform: translate(-50%, -50%); display: flex; align-items: center; gap: 12px;
+    padding: 12px 18px; border-radius: 10px; background: #000b; color: var(--text);
+    font-size: 14px; }
+  #busy[hidden] { display: none; }
+  #busy .spinner { width: 22px; height: 22px; border-radius: 50%;
+    border: 3px solid #fff3; border-top-color: var(--accent);
+    animation: spin .8s linear infinite; will-change: transform; }
+  @keyframes spin { to { transform: rotate(360deg); } }
 </style>
 </head>
 <body>
@@ -66,7 +77,10 @@
   </div>
 </div>
 
-<div id="game"><canvas id="canvas" tabindex="-1"></canvas></div>
+<div id="game">
+  <canvas id="canvas" tabindex="-1"></canvas>
+  <div id="busy" hidden><div class="spinner"></div>Завантаження…</div>
+</div>
 
 <script>
 'use strict';
@@ -287,7 +301,22 @@ addEventListener('resize', fitCanvas);
 new MutationObserver(fitCanvas).observe($('canvas'), { attributes: true,
   attributeFilter: ['width', 'height'] });
 
+let busy = false;
+// Called by the game around work that blocks the main thread. SDL feeds
+// audio from the main thread, so suspend it rather than let the browser
+// loop the last buffer.
+function setBusy(value, indicator) {
+  $('busy').hidden = !(value && indicator);
+  if (value === busy) return;
+  busy = value;
+  const ctx = Module.SDL2 && Module.SDL2.audioContext;
+  if (!ctx) return;
+  if (busy) ctx.suspend();
+  else ctx.resume();
+}
+
 var Module = {
+  setBusy,
   canvas: $('canvas'),
   print: (...a) => console.log(...a),
   printErr: (...a) => console.warn(...a),

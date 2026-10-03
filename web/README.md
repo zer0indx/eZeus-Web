@@ -46,6 +46,13 @@ The game folder must contain the original game and the eZeus release folder
   instead of a blocking `while` loop.
 - `web/shell.html` is the page: it imports the game files into OPFS and starts
   the game.
+- Every file operation on OPFS is proxied to another thread, so files are read
+  in large blocks: `QFile` (pak files) and saves are read into memory at once,
+  texture data with a single `fread`.
+- SDL feeds audio from the main thread. Around work that blocks it (reading an
+  adventure, starting an episode, loading screens) the game calls
+  `eMainWindow::runBusy`/`sSetBusy`, which suspend the AudioContext and show a
+  busy indicator, instead of letting the browser loop the last audio buffer.
 
 ## Window size and fullscreen
 

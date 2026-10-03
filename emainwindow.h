@@ -46,6 +46,13 @@ public:
     static eResolution sViewportResolution();
 #endif
 
+    // Runs an action that blocks for a while. In the browser audio is
+    // paused and a busy indicator shown first.
+    void runBusy(const eAction& a);
+    // Pauses audio while the main thread is blocked (browser only, where
+    // audio is fed from the main thread), optionally with a busy indicator.
+    static void sSetBusy(const bool busy, const bool indicator);
+
     void startGameAction(eGameBoard* const board,
                          const eGameWidgetSettings& settings);
     void startGameAction(const stdsptr<eCampaign>& c,
@@ -93,6 +100,8 @@ private:
     void fitViewport();
 
     double mViewportChangedAt = 0;
+    eAction mBusyAction;
+    int mBusyFrames = 0;
 #endif
 
     eSettings mSettings;
