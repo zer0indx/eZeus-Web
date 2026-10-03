@@ -100,9 +100,10 @@
 const $ = id => document.getElementById(id);
 const READY_MARKER = '.ezeus-web-ready';
 // Not needed by eZeus: installers, Windows binaries, manuals, FMV videos and
-// the original game's text files (eZeus has its own .xml copies).
+// the original game's text and setup files (eZeus has its own .xml copies).
+// Keep in sync with web/make_client.py.
 const SKIP_EXT = new Set(['exe', 'dll', 'pdf', 'zip', 'lnk', 'ico', 'asi', 'm3d', 'msg',
-  'hashdb', 'bik', 'eng']);
+  'hashdb', 'bik', 'eng', 'dat', 'info', 'inf', 'ini']);
 const SKIP_DIRS = new Set(['binks']);
 // eZeus only checks that these top-level folders exist; its graphics come from
 // the .e files. DATA alone is ~370 MB.
@@ -110,6 +111,7 @@ const EMPTY_DIRS = ['DATA'];
 
 let runtimeReady = false;
 let filesReady = false;
+let importing = false;
 
 function setStatus(text, bad) {
   $('status').textContent = text;
@@ -125,6 +127,8 @@ function refreshButtons() {
       'Serve it with web/serve.py.', true);
   } else if (!navigator.storage || !navigator.storage.getDirectory) {
     setStatus('This browser does not support OPFS. Use a recent Chrome, Edge, Firefox or Safari.', true);
+  } else if (importing) {
+    setStatus('Importing game files…');
   } else if (!filesReady) {
     setStatus(runtimeReady ? 'Engine ready. Now import the game files.' : 'Loading engine…');
   } else {
@@ -269,15 +273,19 @@ async function importFiles(entries) {
 }
 
 async function runImport(entries) {
+  importing = true;
+  refreshButtons();
   try {
     if (navigator.storage.persist) navigator.storage.persist();
     await importFiles(entries);
   } catch (e) {
+    importing = false;
     console.error(e);
     setStatus(e.message || String(e), true);
     $('pickBtn').disabled = false;
     return;
   }
+  importing = false;
   await checkReady();
 }
 
@@ -308,8 +316,6 @@ $('serverBtn').addEventListener('click', async () => {
   const manifest = await (await fetch('game-manifest.json')).json();
   runImport(walkServer(manifest));
 });
-fetch('game-manifest.json')
-  .then(r => { if (r.ok) $('serverBtn').hidden = false; }).catch(() => {});
 
 $('dirInput').addEventListener('change', e => runImport(walkInput(e.target.files)));
 
@@ -544,7 +550,19 @@ var Module = {
   },
 };
 
-checkReady();
+// When the server provides the game files (the client folder made by
+// web/make_client.py, or serve.py --game-dir), import them without asking.
+(async () => {
+  await checkReady();
+  let manifest = null;
+  try {
+    const r = await fetch('game-manifest.json');
+    if (r.ok) manifest = await r.json();
+  } catch (e) {}
+  if (!manifest) return;
+  $('serverBtn').hidden = false;
+  if (!filesReady) runImport(walkServer(manifest));
+})();
 </script>
 {{{ SCRIPT }}}
 </body>

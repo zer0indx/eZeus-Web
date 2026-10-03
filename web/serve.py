@@ -1,6 +1,6 @@
 """Serves the eZeus web build with the headers WebAssembly threads need.
 
-Usage: python web/serve.py [build_dir] [port] [--game-dir PATH]
+Usage: python web/serve.py [build_dir] [port] [--game-dir PATH] [--open]
 
 With --game-dir the page can import the game files straight from this
 server (GET /game-manifest.json and /game/<path>) instead of asking the
@@ -12,6 +12,7 @@ import http.server
 import json
 import os
 import urllib.parse
+import webbrowser
 
 
 class Handler(http.server.SimpleHTTPRequestHandler):
@@ -34,6 +35,11 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         return super().translate_path(path)
 
     def do_GET(self):
+        if urllib.parse.urlsplit(self.path).path == "/":
+            self.send_response(302)
+            self.send_header("Location", "/eZeus.html")
+            self.end_headers()
+            return
         if urllib.parse.urlsplit(self.path).path == "/game-manifest.json":
             if not self.game_dir:
                 self.send_error(404)
@@ -64,9 +70,14 @@ if __name__ == "__main__":
     parser.add_argument("build_dir", nargs="?", default="build-web")
     parser.add_argument("port", nargs="?", type=int, default=8080)
     parser.add_argument("--game-dir")
+    parser.add_argument("--open", action="store_true",
+                        help="open the game in the browser once the server runs")
     args = parser.parse_args()
     Handler.game_dir = os.path.abspath(args.game_dir) if args.game_dir else None
     handler = functools.partial(Handler, directory=args.build_dir)
     with http.server.ThreadingHTTPServer(("127.0.0.1", args.port), handler) as httpd:
-        print(f"eZeus: http://localhost:{args.port}/eZeus.html", flush=True)
+        url = f"http://localhost:{args.port}/eZeus.html"
+        print(f"eZeus: {url}", flush=True)
+        if args.open:
+            webbrowser.open(url)
         httpd.serve_forever()
