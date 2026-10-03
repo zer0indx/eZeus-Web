@@ -18,6 +18,9 @@
     --title: #fff3c4; --text: #eef8ff; --muted: #bfe0f5; --bad: #ffb09a;
     --gold: #f2c84b;
     --display: "Marcellus SC", "Palatino Linotype", Palatino, Georgia, serif;
+    /* The blue tile behind buttons and panels; darker where text is small. */
+    --pattern: url(static/pattern.webp);
+    --pattern-deep: linear-gradient(#0c3c66d9, #0c3c66d9), url(static/pattern.webp);
     /* Shown until static/background.jpg loads. */
     --landscape:
       radial-gradient(90% 38% at 20% 108%, #8d6a46 0 60%, #0000 60.5%),
@@ -62,12 +65,10 @@
   button.menu-btn {
     width: 100%; padding: 9px 16px; cursor: pointer;
     font: 400 19px/1.2 var(--display); letter-spacing: .05em; color: var(--btn-text);
-    background:
-      radial-gradient(circle at 30% 20%, #ffffff14 0 2px, #0000 3px) 0 0 / 9px 9px,
-      linear-gradient(#4196d4, var(--btn) 45%, #2a74ad);
+    background: linear-gradient(#ffffff26, #0000 45%, #00214033), var(--pattern), var(--btn);
     border: 2px solid; border-color: var(--btn-hi) var(--btn-lo) var(--btn-lo) var(--btn-hi);
     outline: 1px solid #0c2a45; box-shadow: 0 3px 10px #0007;
-    text-shadow: 0 1px 1px #0b2b47;
+    text-shadow: 0 1px 2px #0b2b47, 0 0 6px #0b2b4780;
   }
   button.menu-btn:hover:not(:disabled), button.menu-btn:focus-visible { color: var(--hover-text); }
   button.menu-btn:active:not(:disabled) {
@@ -80,19 +81,17 @@
   /* Message panel like the game's dialogs. */
   .panel {
     width: min(560px, 100%); margin-top: 4vh; padding: 16px 20px;
-    background:
-      radial-gradient(circle at 20% 30%, #ffffff10 0 1.5px, #0000 2.5px) 0 0 / 7px 7px,
-      radial-gradient(circle at 70% 60%, #00000014 0 1.5px, #0000 2.5px) 0 0 / 11px 11px,
-      var(--panel);
+    background: var(--pattern), var(--panel);
     border: 3px solid var(--rim-in); outline: 3px solid var(--rim-out);
     box-shadow: 0 0 0 4px #5b2c22, 0 10px 30px #000a;
   }
   .panel p { margin: 0 0 10px; }
   .panel p:last-child { margin-bottom: 0; }
-  #status { font: 400 18px/1.3 var(--display); color: var(--title); text-align: center;
+  #status { text-shadow: 0 1px 2px #0b2b47, 0 0 6px #0b2b4780;
+    font: 400 18px/1.3 var(--display); color: var(--title); text-align: center;
     letter-spacing: .03em; margin-bottom: 12px; }
   #status.bad { color: var(--bad); }
-  .inset { background: var(--panel-deep); box-shadow: inset 2px 2px 4px #0008, inset -1px -1px 0 #ffffff22;
+  .inset { background: var(--pattern-deep), var(--panel-deep); box-shadow: inset 2px 2px 4px #0008, inset -1px -1px 0 #ffffff22;
     padding: 10px 12px; margin-top: 10px; }
   .help { color: var(--muted); font-size: 14px; }
   .help b { color: var(--text); font-weight: 600; }
@@ -115,7 +114,8 @@
   #busy { position: fixed; left: 50%; top: 50%; z-index: 10; pointer-events: none;
     transform: translate(-50%, -50%); display: flex; align-items: center; gap: 12px;
     padding: 10px 18px; font: 400 18px/1 var(--display); color: var(--title);
-    background: var(--panel); border: 2px solid var(--rim-in); outline: 2px solid var(--rim-out);
+    background: var(--pattern), var(--panel); border: 2px solid var(--rim-in);
+    outline: 2px solid var(--rim-out); text-shadow: 0 1px 2px #0b2b47;
     box-shadow: 0 6px 20px #000a; }
   #busy[hidden] { display: none; }
   /* A note over the running game, e.g. when saves stop syncing. */
@@ -123,7 +123,8 @@
     transform: translateX(-50%); max-width: min(520px, calc(100vw - 32px));
     padding: 10px 16px; font: 15px/1.4 "Palatino Linotype", Palatino, Georgia, serif;
     color: var(--title); text-align: center;
-    background: var(--panel); border: 2px solid var(--rim-in); outline: 2px solid var(--rim-out);
+    background: var(--pattern), var(--panel); border: 2px solid var(--rim-in);
+    outline: 2px solid var(--rim-out); text-shadow: 0 1px 2px #0b2b47;
     box-shadow: 0 6px 20px #000a; }
   #toast[hidden] { display: none; }
   #busy .spinner { width: 20px; height: 20px; border-radius: 50%;

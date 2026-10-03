@@ -16,6 +16,9 @@
     --panel: #2a78b4; --panel-deep: #1b5786; --rim-in: #8fd0f0; --rim-out: #d99a86;
     --title: #fff3c4; --text: #eef8ff; --muted: #bfe0f5; --bad: #ffb09a;
     --display: "Marcellus SC", "Palatino Linotype", Palatino, Georgia, serif;
+    /* The blue tile behind buttons and panels; darker where text is small. */
+    --pattern: url(static/pattern.webp);
+    --pattern-deep: linear-gradient(#0c3c66d9, #0c3c66d9), url(static/pattern.webp);
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; min-height: 100%; }
@@ -40,28 +43,24 @@
   }
   form {
     width: min(380px, 100%); padding: 20px;
-    background:
-      radial-gradient(circle at 20% 30%, #ffffff10 0 1.5px, #0000 2.5px) 0 0 / 7px 7px,
-      radial-gradient(circle at 70% 60%, #00000014 0 1.5px, #0000 2.5px) 0 0 / 11px 11px,
-      var(--panel);
+    background: var(--pattern), var(--panel);
     border: 3px solid var(--rim-in); outline: 3px solid var(--rim-out);
     box-shadow: 0 0 0 4px #5b2c22, 0 10px 30px #000a;
   }
-  label { display: block; margin-bottom: 14px; font: 400 15px/1.3 var(--display);
+  label { display: block; margin-bottom: 14px; text-shadow: 0 1px 2px #0b2b47, 0 0 6px #0b2b4780;
+    font: 400 15px/1.3 var(--display);
     letter-spacing: .05em; color: var(--title); }
   input {
     display: block; width: 100%; margin-top: 6px; padding: 9px 10px;
     font: 16px/1.2 "Palatino Linotype", Palatino, Georgia, serif; color: var(--text);
-    background: var(--panel-deep); border: 0;
+    background: var(--pattern-deep), var(--panel-deep); border: 0;
     box-shadow: inset 2px 2px 4px #0008, inset -1px -1px 0 #ffffff22;
   }
   input:focus { outline: 2px solid var(--hover-text); }
   button {
     width: 100%; margin-top: 4px; padding: 10px 16px; cursor: pointer;
     font: 400 20px/1.2 var(--display); letter-spacing: .05em; color: var(--hover-text);
-    background:
-      radial-gradient(circle at 30% 20%, #ffffff14 0 2px, #0000 3px) 0 0 / 9px 9px,
-      linear-gradient(#4196d4, var(--btn) 45%, #2a74ad);
+    background: linear-gradient(#ffffff26, #0000 45%, #00214033), var(--pattern), var(--btn);
     border: 2px solid; border-color: var(--btn-hi) var(--btn-lo) var(--btn-lo) var(--btn-hi);
     outline: 1px solid #0c2a45; text-shadow: 0 1px 1px #0b2b47;
   }
