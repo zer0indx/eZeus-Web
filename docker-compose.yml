@@ -1,0 +1,25 @@
+# Self-hosted eZeus Web. Copy .env.example to .env, or set the variables in
+# your stack manager, and put a reverse proxy with HTTPS in front of the port.
+# See web/README.md.
+services:
+  ezeus-web:
+    image: ghcr.io/zer0indx/ezeus-web:latest
+    container_name: ezeus-web
+    restart: unless-stopped
+    ports:
+      - "${EZEUS_HTTP_PORT:-8080}:8080"
+    environment:
+      EZEUS_USER: ${EZEUS_USER:-zeus}
+      EZEUS_PASSWORD: ${EZEUS_PASSWORD:?set EZEUS_PASSWORD (at least 12 characters)}
+      # "server": the game files come from the folder mounted at /game.
+      # "local": every browser picks its own Zeus and Poseidon folder.
+      EZEUS_GAME_SOURCE: ${EZEUS_GAME_SOURCE:-local}
+    volumes:
+      # Saves, the session secret and the start page art.
+      - ezeus-data:/data
+      # Only read with EZEUS_GAME_SOURCE=server: your Zeus and Poseidon folder
+      # with an eZeus release folder inside.
+      - ${EZEUS_GAME_PATH:-./game}:/game:ro
+
+volumes:
+  ezeus-data:

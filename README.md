@@ -6,6 +6,8 @@ The game runs in Chrome, Edge, Firefox or Safari. It does not include any game f
 
 **[How to build and run the web version](web/README.md)**
 
+It can also be self-hosted as a private Docker service with a sign-in, the game files provided by the server and saves that follow you between browsers: see [Self-hosting](web/README.md#self-hosting).
+
 The desktop build still works as in eZeus; everything below is the original eZeus README.
 
 ---

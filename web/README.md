@@ -68,6 +68,105 @@ python web/make_client.py "/path/to/Zeus and Poseidon" --client "/path/to/eZeus 
 Running the script again updates the folders, copying only changed files.
 The client comes from your own copy of the game, so keep it to yourself.
 
+## Self-hosting
+
+`web/server.py` turns the build into a small private service: the game behind
+a sign-in, saves kept on the server, and optionally the game files too. It is
+packaged as a Docker image (`Dockerfile`, `docker-compose.yml`); the image has
+no game files in it.
+
+### What you need
+
+- Docker, or any stack manager that takes a compose file.
+- A reverse proxy with HTTPS in front of the container. Browsers only allow
+  the features the game needs (threads, storage) on `https://` or `localhost`,
+  so plain `http://server:8080` from another machine will not work. The proxy
+  should pass `X-Forwarded-For` and `X-Forwarded-Proto`; the container sends
+  the required `Cross-Origin-*` headers itself.
+- Your own copy of Zeus and Poseidon with an eZeus release folder inside.
+
+### Start
+
+```bash
+cp .env.example .env    # set EZEUS_PASSWORD, at least 12 characters
+docker compose up -d
+```
+
+or paste `docker-compose.yml` into your stack manager and set the same
+variables there. Then point the reverse proxy at port 8080 and open the site.
+
+| Variable | Meaning |
+|---|---|
+| `EZEUS_USER` | Sign-in name (default `zeus`) |
+| `EZEUS_PASSWORD` | Password, at least 12 characters. Or `EZEUS_PASSWORD_HASH`, made with `docker run --rm -it ghcr.io/zer0indx/ezeus-web python /app/server.py hash-password` |
+| `EZEUS_GAME_SOURCE` | `server` or `local`, see below (default `local`) |
+| `EZEUS_GAME_PATH` | Host folder mounted at `/game` (compose only) |
+| `EZEUS_HTTP_PORT` | Host port (compose only, default 8080) |
+| `EZEUS_SESSION_DAYS` | How long a sign-in lasts (default 30) |
+| `EZEUS_TRUST_PROXY` | `1` (default) takes the client address and scheme from the proxy headers; set `0` if nothing sits in front |
+
+The container runs as user 1000. If you mount host folders instead of the
+named volume, make `/data` writable and `/game` readable for that user, or set
+`user:` in the compose file.
+
+### Game files: two modes
+
+- `EZEUS_GAME_SOURCE=server`: mount your Zeus and Poseidon folder at `/game`
+  (read-only). After signing in, each browser copies the files it needs
+  (~630 MB) into its own storage, once, and again only for files that change.
+  Nothing has to be chosen in the browser, and the start page shows the
+  game's own art, taken from that folder.
+- `EZEUS_GAME_SOURCE=local`: the server has no game files. Each browser picks
+  a Zeus and Poseidon folder on its own computer, as in the standalone build.
+  To have the game's art on the start page, put `menu.jpg` and `Zeus.ttf`
+  (made by `web/extract_assets.py`) into `assets` inside the data volume.
+
+### Saves
+
+Saves are stored in the data volume (`/data/saves`) and synced with the
+browser: on opening the page, right after the game writes a save, and every
+20 seconds. Start a city on one computer and continue on another.
+
+- If a save was changed in two places, the newer one wins; the other is kept
+  as an older version.
+- The server keeps the last 5 versions of every save in `/data/saves-history`
+  and moves deleted saves to `/data/saves-trash` for 30 days, so a mistake in
+  one browser does not lose anything.
+- While the game runs it only sends its own saves. If another browser changed
+  them meanwhile, the game says so; reload the page to get them.
+- "Download saves" / "Upload saves" still work as a manual backup.
+
+Back up the data volume to back up the saves.
+
+### Access
+
+Everything except the sign-in page needs a session: the game, the game files
+and the API. There is one account and no default password.
+
+- Five wrong passwords lock an address out for 30 seconds, doubling each time
+  up to an hour. Sign-ins and failures are written to the container log with
+  the client address.
+- Sessions are signed cookies (`HttpOnly`, `SameSite=Strict`, `Secure` behind
+  HTTPS). The signing key is created in the data volume on first start;
+  deleting `/data/session-secret` and restarting signs everyone out.
+- The game files are yours and copyrighted: keep the site private. Reaching it
+  over a VPN is safer than exposing it to the internet.
+
+### Building the image yourself
+
+```bash
+docker build -t ezeus-web .
+```
+
+The GitHub workflow in `.github/workflows/docker.yml` does the same for
+version tags and publishes `ghcr.io/zer0indx/ezeus-web`.
+
+Without Docker: build the web version as above, then
+
+```bash
+EZEUS_PASSWORD=... EZEUS_APP_DIR=build-web EZEUS_DATA_DIR=./data python web/server.py
+```
+
 ## How the port works
 
 - `web/emscripten.cmake`: SDL2 libraries come from Emscripten ports, libnoise is

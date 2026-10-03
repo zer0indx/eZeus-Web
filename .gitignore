@@ -78,3 +78,6 @@ CMakeLists.txt.user*
 /build-web/
 /web/assets/
 
+
+# Self-hosting settings
+.env
