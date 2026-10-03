@@ -150,9 +150,9 @@
       <div id="progressText"></div>
     </div>
     <div class="inset help" id="importCard">
-      <p>Choose the <b>eZeus Web Client</b> folder, or your <b>Zeus and Poseidon</b> folder
-        with the eZeus folder (<code>interface.e</code>, <code>i30.e</code>) inside. The files are
-        copied into this browser's storage, so this is needed only once.</p>
+      <p>Choose your <b>Zeus and Poseidon</b> folder, with the eZeus folder
+        (<code>interface.e</code>, <code>i30.e</code>) inside. The files are copied into this
+        browser's storage, so this is needed only once.</p>
       <p>Saves stay in this browser: download them to keep a backup or to move them to
         another browser.</p>
       <div id="savesText"></div>
@@ -282,12 +282,11 @@ async function importFiles(entries) {
   const has = p => list.some(e => e.target.join('/').toLowerCase() === p);
   const hasDir = p => list.some(e => e.target.join('/').toLowerCase().startsWith(p));
   if (!has('ezeus/interface.e')) {
-    throw new Error('eZeus/interface.e not found. Choose the eZeus Web Client folder, or the ' +
-      'Zeus and Poseidon folder that contains the eZeus folder.');
+    throw new Error('eZeus/interface.e not found. Choose the Zeus and Poseidon folder ' +
+      'that contains the eZeus folder.');
   }
   if (!hasDir('audio/wavs/')) {
-    throw new Error('Audio/Wavs not found. Choose the eZeus Web Client folder, or the root ' +
-      'folder of the installed game.');
+    throw new Error('Audio/Wavs not found. Choose the Zeus and Poseidon folder.');
   }
 
   $('progressCard').hidden = false;
