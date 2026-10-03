@@ -211,6 +211,9 @@ let importing = false;
 // mode, the game files come from it.
 let hosted = null;
 let savesSynced = false;
+// The list of game files the server offers, if any (server.py in "server"
+// mode, or serve.py --game-dir). They are only imported on request.
+let serverFiles = null;
 
 function setStatus(text, bad) {
   $('status').textContent = text;
@@ -232,6 +235,16 @@ function refreshButtons() {
   $('playBtn').disabled = !(runtimeReady && filesReady) || importing || waitingForSaves;
   $('clearBtn').hidden = !filesReady;
   $('savesCard').hidden = !filesReady;
+  // Offer the server's game files when this browser has none, or older ones.
+  const fromServer = !!(hosted && hosted.mode === 'server');
+  const outdated = !!(serverFiles && serverFiles.version && fromServer &&
+    localStorage.getItem(GAME_VERSION_KEY) !== serverFiles.version);
+  $('serverBtn').hidden = !serverFiles || importing || (filesReady && !outdated);
+  if (serverFiles) {
+    const mb = Math.round(serverFiles.files.reduce((sum, f) => sum + f.size, 0) / 2 ** 20);
+    $('serverBtn').textContent = filesReady ? 'Update Game Files'
+      : fromServer ? `Import Game Files (${mb} MB)` : 'Import From Local Server';
+  }
   if (!crossOriginIsolated) {
     setStatus('The page is not cross-origin isolated (COOP/COEP headers are required). ' +
       'Serve it with web/serve.py.', true);
@@ -425,8 +438,17 @@ async function* walkServer(manifest) {
 }
 
 $('serverBtn').addEventListener('click', async () => {
-  const manifest = await (await fetch('game-manifest.json')).json();
-  runImport(walkServer(manifest));
+  try {
+    serverFiles = await (await fetch('game-manifest.json')).json();
+  } catch (e) {
+    setStatus('The server cannot be reached.', true);
+    return;
+  }
+  await runImport(walkServer(serverFiles));
+  if (filesReady && serverFiles.version) {
+    localStorage.setItem(GAME_VERSION_KEY, serverFiles.version);
+  }
+  refreshButtons();
 });
 
 $('dirInput').addEventListener('change', e => runImport(walkInput(e.target.files)));
@@ -872,8 +894,8 @@ function applyHosting() {
     'browser you sign in from.';
   if (hosted.mode === 'server') {
     $('pickBtn').hidden = true;
-    $('importHelp').textContent = 'The game files come from this server and are copied ' +
-      'into this browser\'s storage once.';
+    $('importHelp').textContent = 'The game files come from this server. Importing copies ' +
+      'them into this browser\'s storage; it is needed once per browser.';
   }
 }
 
@@ -932,8 +954,8 @@ var Module = {
 
 // Start-up. web/server.py answers api/config; plain static hosting and
 // serve.py do not, and then the page works on its own. When the server offers
-// the game files (server.py in "server" mode, or serve.py --game-dir), they
-// are imported without asking, and again when they change on the server.
+// the game files, the page shows a button to import them; nothing that large
+// is downloaded without being asked for.
 (async () => {
   await checkReady();
   try {
@@ -952,14 +974,8 @@ var Module = {
     const r = await fetch('game-manifest.json');
     if (r.ok) manifest = await r.json();
   } catch (e) {}
-  if (!manifest) return;
-  if (!hosted || hosted.mode !== 'server') $('serverBtn').hidden = false;
-  const changed = !!manifest.version &&
-    localStorage.getItem(GAME_VERSION_KEY) !== manifest.version;
-  if (!filesReady || (hosted && changed)) {
-    await runImport(walkServer(manifest));
-    if (filesReady && manifest.version) localStorage.setItem(GAME_VERSION_KEY, manifest.version);
-  }
+  serverFiles = manifest;
+  refreshButtons();
 })();
 </script>
 <template id="engine">{{{ SCRIPT }}}</template>

@@ -107,9 +107,10 @@ named volume, make `/data` writable and `/game` readable for that user, or set
 ### Game files: two modes
 
 - `EZEUS_GAME_SOURCE=server`: mount your Zeus and Poseidon folder at `/game`
-  (read-only). After signing in, each browser copies the files it needs
-  (~630 MB) into its own storage, once, and again only for files that change.
-  Nothing has to be chosen in the browser.
+  (read-only). After signing in, "Import Game Files" copies the files the
+  game needs (~630 MB) into that browser's storage, once; if they change on
+  the server, "Update Game Files" fetches only what changed. Nothing is
+  downloaded before the button is pressed.
 - `EZEUS_GAME_SOURCE=local`: the server has no game files. Each browser picks
   a Zeus and Poseidon folder on its own computer, as in the standalone build.
 
