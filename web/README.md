@@ -46,3 +46,12 @@ The game folder must contain the original game and the eZeus release folder
   instead of a blocking `while` loop.
 - `web/shell.html` is the page: it imports the game files into OPFS and starts
   the game.
+
+## Window size and fullscreen
+
+The resolution follows the browser window (at least 800x600, and no narrower
+than 4:3). Widgets are laid out once, so the resolution only changes while the
+main menu is shown; on other screens the page scales the canvas to fit the
+window, keeping its aspect ratio. "Full screen" in the game options switches
+the browser to fullscreen on the next click or key press. The resolution list
+in the options has no lasting effect: the main menu always refits the window.

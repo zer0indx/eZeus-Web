@@ -2,6 +2,7 @@
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
+#include <emscripten/html5.h>
 #endif
 
 #include "widgets/emainmenu.h"
@@ -110,14 +111,60 @@ void eMainWindow::setResolution(const eResolution& res) {
     const int w = res.width();
     const int h = res.height();
     SDL_SetWindowSize(mSdlWindow, w, h);
+#ifdef __EMSCRIPTEN__
+    // The canvas is resized without a size-changed event reaching the
+    // renderer, so it would keep drawing into the old area.
+    SDL_RenderSetViewport(mSdlRenderer, nullptr);
+#endif
 }
 
 void eMainWindow::setFullscreen(const bool f) {
     if(mSettings.fFullscreen == f && !mFirstFullscrenSetting) return;
     mFirstFullscrenSetting = false;
     mSettings.fFullscreen = f;
+#ifdef __EMSCRIPTEN__
+    // Browser fullscreen of the page's game container; the resolution then
+    // follows the new window size in fitViewport(). Browsers only allow it
+    // from user input, so the request waits for the next click or key.
+    if(f) emscripten_request_fullscreen("#game", true);
+    else emscripten_exit_fullscreen();
+#else
     SDL_SetWindowFullscreen(mSdlWindow, f ? SDL_WINDOW_FULLSCREEN : 0);
+#endif
 }
+
+#ifdef __EMSCRIPTEN__
+eResolution eMainWindow::sViewportResolution() {
+    // The interface needs at least 800x600 and is not laid out for windows
+    // narrower than 4:3; the page scales and letterboxes the canvas instead.
+    const int w = std::max(800, EM_ASM_INT({ return window.innerWidth; }));
+    int h = std::max(600, EM_ASM_INT({ return window.innerHeight; }));
+    h = std::min(h, 3*w/4);
+    return eResolution(w, h);
+}
+
+// Widgets are laid out once when created, so only the main menu, which is
+// cheap to rebuild, follows the browser window. Other screens keep their
+// resolution and the page scales the canvas until the player gets back to
+// the main menu.
+void eMainWindow::fitViewport() {
+    if(!dynamic_cast<eMainMenu*>(mWidget)) return;
+    const auto res = sViewportResolution();
+    if(res == mSettings.fRes) {
+        mViewportChangedAt = 0;
+        return;
+    }
+    // Wait for the window to settle, e.g. while it is being dragged.
+    const double now = emscripten_get_now();
+    if(mViewportChangedAt == 0) mViewportChangedAt = now;
+    if(now - mViewportChangedAt < 300) return;
+    mViewportChangedAt = 0;
+    setResolution(res);
+    eGameTextures::setSettings(mSettings);
+    // Loads interface textures for the new UI scale if needed.
+    showMenuLoading();
+}
+#endif
 
 void eMainWindow::startGameAction(eGameBoard* const board,
                                   const eGameWidgetSettings& settings) {
@@ -578,6 +625,9 @@ int eMainWindow::exec() {
     // drives the loop through emscripten_set_main_loop.
     auto frame = [=]() mutable {
         const auto fpsStart = high_resolution_clock::now();
+#ifdef __EMSCRIPTEN__
+        fitViewport();
+#endif
 
         while(SDL_PollEvent(&e)) {
             int x, y;

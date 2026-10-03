@@ -41,6 +41,10 @@ public:
 
     void setResolution(const eResolution& res);
     void setFullscreen(const bool f);
+#ifdef __EMSCRIPTEN__
+    // Resolution that fills the browser window.
+    static eResolution sViewportResolution();
+#endif
 
     void startGameAction(eGameBoard* const board,
                          const eGameWidgetSettings& settings);
@@ -85,6 +89,11 @@ public:
     std::string leaderSaveDir() const;
 private:
     void clearWidgets();
+#ifdef __EMSCRIPTEN__
+    void fitViewport();
+
+    double mViewportChangedAt = 0;
+#endif
 
     eSettings mSettings;
 

@@ -4,6 +4,7 @@
 #include <SDL2/SDL_mixer.h>
 
 #include <string>
+#include <algorithm>
 
 #include <filesystem>
 
@@ -171,6 +172,14 @@ int main() {
     eNumbers::sLoad();
     eSettings settings;
     settings.read();
+#ifdef __EMSCRIPTEN__
+    settings.fRes = eMainWindow::sViewportResolution();
+    if(std::find(eResolution::sResolutions.begin(),
+                 eResolution::sResolutions.end(),
+                 settings.fRes) == eResolution::sResolutions.end()) {
+        eResolution::sResolutions.push_back(settings.fRes);
+    }
+#endif
     bool found = false;
     const auto checkTextureSize = [&found](const std::string& path,
                                            bool& setting) {

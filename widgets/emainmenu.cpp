@@ -62,7 +62,8 @@ void eMainMenu::initialize(const eAction& newGameA,
     int tw;
     int th;
     textureSize(tw, th);
-    leader->setX((width() - tw)/2 + 2*p);
+    // Keep it on screen when the window is narrower than the background.
+    leader->setX(std::max(2*p, (width() - tw)/2 + 2*p));
     leader->setY(2*p);
 }
 

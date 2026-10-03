@@ -31,8 +31,7 @@
   code { background: #0004; padding: 1px 5px; border-radius: 4px; }
   #game { display: none; position: fixed; inset: 0; background: #000;
     align-items: center; justify-content: center; }
-  #canvas { display: block; max-width: 100vw; max-height: 100vh; outline: none;
-    image-rendering: auto; }
+  #canvas { display: block; outline: none; }
   body.playing #setup { display: none; }
   body.playing #game { display: flex; }
 </style>
@@ -274,6 +273,19 @@ $('playBtn').addEventListener('click', () => {
 });
 
 $('canvas').addEventListener('contextmenu', e => e.preventDefault());
+
+// The game picks its resolution from the window size, but keeps it while a
+// city is open; scale the canvas to fit the window, keeping its aspect ratio.
+function fitCanvas() {
+  const c = $('canvas');
+  if (!c.width || !c.height) return;
+  const scale = Math.min(innerWidth / c.width, innerHeight / c.height);
+  c.style.width = Math.floor(c.width * scale) + 'px';
+  c.style.height = Math.floor(c.height * scale) + 'px';
+}
+addEventListener('resize', fitCanvas);
+new MutationObserver(fitCanvas).observe($('canvas'), { attributes: true,
+  attributeFilter: ['width', 'height'] });
 
 var Module = {
   canvas: $('canvas'),
