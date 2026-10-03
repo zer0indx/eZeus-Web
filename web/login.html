@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>eZeus Web</title>
+<style>
+  /* Same look as the game's start page, without the game's own painting and
+     font: this page is shown before signing in. */
+  :root {
+    --sky-top: #6c7bd6; --sky-bottom: #b9c3ee;
+    --btn: #3586c4; --btn-hi: #9fd8f4; --btn-lo: #154772; --btn-text: #eef8ff;
+    --hover-text: #ffe27a;
+    --panel: #2a78b4; --panel-deep: #1b5786; --rim-in: #8fd0f0; --rim-out: #d99a86;
+    --title: #fff3c4; --text: #eef8ff; --muted: #bfe0f5; --bad: #ffb09a;
+    --serif: "Trajan Pro", "Cinzel", "Palatino Linotype", Palatino, Georgia, serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; min-height: 100%; }
+  body {
+    min-height: 100vh; display: flex; flex-direction: column; align-items: center;
+    padding: 10vh 16px 32px; color: var(--text);
+    font: 15px/1.5 "Palatino Linotype", Palatino, Georgia, serif;
+    background:
+      linear-gradient(to bottom, #0000 55%, #0006),
+      radial-gradient(90% 38% at 20% 108%, #8d6a46 0 60%, #0000 60.5%),
+      radial-gradient(80% 32% at 85% 104%, #6f7f3e 0 60%, #0000 60.5%),
+      radial-gradient(45% 42% at 72% 92%, #9c9ad6 0 55%, #0000 55.5%),
+      radial-gradient(30% 22% at 22% 86%, #a9a8dc 0 55%, #0000 55.5%),
+      linear-gradient(var(--sky-top), var(--sky-bottom) 80%);
+    background-attachment: fixed;
+  }
+  h1 {
+    margin: 0 0 5vh; font: 400 clamp(40px, 8vw, 72px)/1 var(--serif); color: var(--title);
+    letter-spacing: .04em; text-align: center;
+    text-shadow: 0 2px 0 #3a2a10, 0 0 3px #3a2a10, 0 6px 18px #0009;
+  }
+  form {
+    width: min(380px, 100%); padding: 20px;
+    background:
+      radial-gradient(circle at 20% 30%, #ffffff10 0 1.5px, #0000 2.5px) 0 0 / 7px 7px,
+      radial-gradient(circle at 70% 60%, #00000014 0 1.5px, #0000 2.5px) 0 0 / 11px 11px,
+      var(--panel);
+    border: 3px solid var(--rim-in); outline: 3px solid var(--rim-out);
+    box-shadow: 0 0 0 4px #5b2c22, 0 10px 30px #000a;
+  }
+  label { display: block; margin-bottom: 14px; font: 400 15px/1.3 var(--serif);
+    letter-spacing: .05em; color: var(--title); }
+  input {
+    display: block; width: 100%; margin-top: 6px; padding: 9px 10px;
+    font: 16px/1.2 "Palatino Linotype", Palatino, Georgia, serif; color: var(--text);
+    background: var(--panel-deep); border: 0;
+    box-shadow: inset 2px 2px 4px #0008, inset -1px -1px 0 #ffffff22;
+  }
+  input:focus { outline: 2px solid var(--hover-text); }
+  button {
+    width: 100%; margin-top: 4px; padding: 10px 16px; cursor: pointer;
+    font: 400 20px/1.2 var(--serif); letter-spacing: .05em; color: var(--hover-text);
+    background:
+      radial-gradient(circle at 30% 20%, #ffffff14 0 2px, #0000 3px) 0 0 / 9px 9px,
+      linear-gradient(#4196d4, var(--btn) 45%, #2a74ad);
+    border: 2px solid; border-color: var(--btn-hi) var(--btn-lo) var(--btn-lo) var(--btn-hi);
+    outline: 1px solid #0c2a45; text-shadow: 0 1px 1px #0b2b47;
+  }
+  button:disabled { cursor: default; color: #a9c6dc; filter: saturate(.6); }
+  #message { min-height: 1.5em; margin: 12px 0 0; text-align: center; color: var(--bad); }
+</style>
+</head>
+<body>
+<h1>eZeus Web</h1>
+<form id="form" autocomplete="on">
+  <label>Name
+    <input id="username" name="username" autocomplete="username" autocapitalize="none"
+           spellcheck="false" required autofocus>
+  </label>
+  <label>Password
+    <input id="password" name="password" type="password" autocomplete="current-password" required>
+  </label>
+  <button id="submit">Enter</button>
+  <p id="message" role="alert"></p>
+</form>
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+$('form').addEventListener('submit', async e => {
+  e.preventDefault();
+  $('submit').disabled = true;
+  $('message').textContent = '';
+  try {
+    const r = await fetch('api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: $('username').value, password: $('password').value }),
+    });
+    if (r.ok) {
+      location.replace('./');
+      return;
+    }
+    const data = await r.json().catch(() => ({}));
+    if (r.status === 429) {
+      const minutes = Math.ceil((data.retry_after || 60) / 60);
+      $('message').textContent = `Too many attempts. Try again in ${minutes} min.`;
+    } else if (r.status === 401) {
+      $('message').textContent = 'Wrong name or password.';
+      $('password').value = '';
+      $('password').focus();
+    } else {
+      $('message').textContent = 'Could not sign in. Try again.';
+    }
+  } catch (err) {
+    $('message').textContent = 'The server cannot be reached.';
+  }
+  $('submit').disabled = false;
+});
+</script>
+</body>
+</html>

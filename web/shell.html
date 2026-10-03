@@ -99,10 +99,11 @@
   .help b { color: var(--text); font-weight: 600; }
   .bar { height: 12px; background: #0d3557; box-shadow: inset 1px 1px 3px #000a; }
   .bar > div { height: 100%; width: 0; background: linear-gradient(#ffe48a, var(--gold) 50%, #b8892a); }
-  #progressText, #savesText { color: var(--muted); font-size: 13px; margin-top: 6px;
+  #progressText, #savesText, #syncText { color: var(--muted); font-size: 13px; margin-top: 6px;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  #savesText:empty { display: none; }
-  .footer { margin-top: 12px; display: flex; justify-content: center; }
+  #savesText:empty, #syncText:empty { display: none; }
+  #syncText.bad { color: var(--bad); white-space: normal; }
+  .footer { margin-top: 12px; display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
   code { font-size: 13px; background: #0003; padding: 0 4px; }
 
   #game { display: none; position: fixed; inset: 0; background: #000;
@@ -118,6 +119,14 @@
     background: var(--panel); border: 2px solid var(--rim-in); outline: 2px solid var(--rim-out);
     box-shadow: 0 6px 20px #000a; }
   #busy[hidden] { display: none; }
+  /* A note over the running game, e.g. when saves stop syncing. */
+  #toast { position: fixed; left: 50%; top: 16px; z-index: 11; pointer-events: none;
+    transform: translateX(-50%); max-width: min(520px, calc(100vw - 32px));
+    padding: 10px 16px; font: 15px/1.4 "Palatino Linotype", Palatino, Georgia, serif;
+    color: var(--title); text-align: center;
+    background: var(--panel); border: 2px solid var(--rim-in); outline: 2px solid var(--rim-out);
+    box-shadow: 0 6px 20px #000a; }
+  #toast[hidden] { display: none; }
   #busy .spinner { width: 20px; height: 20px; border-radius: 50%;
     border: 3px solid #ffffff40; border-top-color: var(--gold);
     animation: spin .8s linear infinite; will-change: transform; }
@@ -150,15 +159,17 @@
       <div id="progressText"></div>
     </div>
     <div class="inset help" id="importCard">
-      <p>Choose your <b>Zeus and Poseidon</b> folder, with the eZeus folder
+      <p id="importHelp">Choose your <b>Zeus and Poseidon</b> folder, with the eZeus folder
         (<code>interface.e</code>, <code>i30.e</code>) inside. The files are copied into this
         browser's storage, so this is needed only once.</p>
-      <p>Saves stay in this browser: download them to keep a backup or to move them to
-        another browser.</p>
+      <p id="savesHelp">Saves stay in this browser: download them to keep a backup or to move
+        them to another browser.</p>
+      <div id="syncText"></div>
       <div id="savesText"></div>
     </div>
     <div class="footer">
       <button class="menu-btn small" id="clearBtn" hidden>Remove Game Files From Browser</button>
+      <button class="menu-btn small" id="logoutBtn" hidden>Sign Out</button>
     </div>
   </div>
 </div>
@@ -166,6 +177,7 @@
 <div id="game">
   <canvas id="canvas" tabindex="-1"></canvas>
   <div id="busy" hidden><div class="spinner"></div>Loading…</div>
+  <div id="toast" hidden></div>
 </div>
 
 <script>
@@ -185,6 +197,11 @@ const EMPTY_DIRS = ['DATA'];
 let runtimeReady = false;
 let filesReady = false;
 let importing = false;
+// Set when web/server.py serves the page: { user, mode, sync }. Then the page
+// is behind a sign-in, the saves are synced with the server and, in "server"
+// mode, the game files come from it.
+let hosted = null;
+let savesSynced = false;
 
 function setStatus(text, bad) {
   $('status').textContent = text;
@@ -192,7 +209,8 @@ function setStatus(text, bad) {
 }
 
 function refreshButtons() {
-  $('playBtn').disabled = !(runtimeReady && filesReady);
+  const waitingForSaves = !!(hosted && hosted.sync) && !savesSynced;
+  $('playBtn').disabled = !(runtimeReady && filesReady) || importing || waitingForSaves;
   $('clearBtn').hidden = !filesReady;
   $('savesCard').hidden = !filesReady;
   if (!crossOriginIsolated) {
@@ -204,6 +222,8 @@ function refreshButtons() {
     setStatus('Importing game files…');
   } else if (!filesReady) {
     setStatus(runtimeReady ? 'Engine ready. Now import the game files.' : 'Loading engine…');
+  } else if (waitingForSaves) {
+    setStatus('Syncing saves…');
   } else {
     setStatus(runtimeReady ? 'Ready.' : 'Loading engine…');
   }
@@ -393,11 +413,16 @@ $('serverBtn').addEventListener('click', async () => {
 $('dirInput').addEventListener('change', e => runImport(walkInput(e.target.files)));
 
 $('clearBtn').addEventListener('click', async () => {
-  if (!confirm('Remove the imported game files and saves from this browser? ' +
-               'Download your saves first to keep them.')) return;
+  if (!confirm(hosted
+      ? 'Remove the game files and the copies of the saves from this browser? ' +
+        'The saves on the server are kept.'
+      : 'Remove the imported game files and saves from this browser? ' +
+        'Download your saves first to keep them.')) return;
   const root = await opfsRoot();
   for await (const [name] of root.entries()) await root.removeEntry(name, { recursive: true });
-  await checkReady();
+  localStorage.removeItem(GAME_VERSION_KEY);
+  if (hosted) location.reload();
+  else await checkReady();
 });
 
 // Minimal ZIP support for the saves archive: writes stored (uncompressed)
@@ -570,10 +595,272 @@ $('savesInput').addEventListener('change', async e => {
     }
     $('savesText').textContent = added ? `Uploaded ${added} save files.`
                                        : 'The archive has no save files.';
+    if (hosted && hosted.sync) runSync(true);
   } catch (err) {
     console.error(err);
     $('savesText').textContent = 'Could not upload saves: ' + (err.message || err);
   }
+});
+
+// Saves sync with web/server.py. The saves live in eZeus/Save in this
+// browser's storage, where the game reads and writes them; the page copies
+// changes both ways. SYNC_BASE remembers what both sides had after the last
+// sync, which tells a save deleted here from one added there.
+const SYNC_BASE = '.sync-base.json';
+const GAME_VERSION_KEY = 'ezeus-game-version';
+const hashCache = new Map(); // path -> { size, lm, hash }
+class SignedOutError extends Error {}
+
+async function api(method, url, options) {
+  const r = await fetch(url, { method, ...options });
+  if (r.status === 401) throw new SignedOutError('signed out');
+  if (!r.ok) throw new Error(`${method} ${url}: HTTP ${r.status}`);
+  return r;
+}
+const saveUrl = (path, query) =>
+  'api/saves/' + path.split('/').map(encodeURIComponent).join('/') + (query || '');
+
+async function ezeusHandle() {
+  return (await opfsRoot()).getDirectoryHandle('eZeus', { create: true });
+}
+
+async function readSyncBase() {
+  try {
+    const file = await (await (await ezeusHandle()).getFileHandle(SYNC_BASE)).getFile();
+    return JSON.parse(await file.text());
+  } catch (e) { return {}; }
+}
+
+async function writeSyncBase(base) {
+  const w = await (await (await ezeusHandle()).getFileHandle(SYNC_BASE, { create: true }))
+    .createWritable();
+  await w.write(JSON.stringify(base));
+  await w.close();
+}
+
+// Map of path -> { dir: true } or { handle }; folders end in '/'.
+async function listLocalSaves() {
+  const out = new Map();
+  async function walk(dir, prefix) {
+    for await (const [name, handle] of dir.entries()) {
+      if (handle.kind === 'directory') {
+        out.set(prefix + name + '/', { dir: true });
+        await walk(handle, prefix + name + '/');
+      } else {
+        out.set(prefix + name, { handle });
+      }
+    }
+  }
+  try { await walk(await saveDir(false), ''); } catch (e) {}
+  return out;
+}
+
+// Throws while the game has the file open for writing; the caller retries on
+// the next round.
+async function localSave(path, entry) {
+  const file = await entry.handle.getFile();
+  const cached = hashCache.get(path);
+  if (cached && cached.size === file.size && cached.lm === file.lastModified) {
+    return { file, hash: cached.hash };
+  }
+  const digest = await crypto.subtle.digest('SHA-256', await file.arrayBuffer());
+  const hash = [...new Uint8Array(digest)].map(b => b.toString(16).padStart(2, '0')).join('');
+  hashCache.set(path, { size: file.size, lm: file.lastModified, hash });
+  return { file, hash };
+}
+
+async function localParent(path, create) {
+  const parts = path.split('/').filter(Boolean);
+  let dir = await saveDir(create);
+  for (const p of parts.slice(0, -1)) dir = await dir.getDirectoryHandle(p, { create });
+  return { dir, name: parts[parts.length - 1] };
+}
+
+async function removeLocalSave(path) {
+  try {
+    const { dir, name } = await localParent(path, false);
+    await dir.removeEntry(name, { recursive: true });
+  } catch (e) {}
+}
+
+// One sync pass. A full pass also brings server changes into this browser;
+// while the game runs only its own changes are sent, so files are not swapped
+// under it. Returns true when the server has changes this browser lacks.
+async function syncSavesOnce(full) {
+  const remote = new Map((await (await api('GET', 'api/saves')).json()).saves
+    .map(e => [e.path, e]));
+  const local = await listLocalSaves();
+  let base = await readSyncBase();
+  // A browser whose storage was cleared must not look like one where every
+  // save was deleted on purpose.
+  if (local.size === 0) base = {};
+  const paths = [...new Set([...local.keys(), ...remote.keys(), ...Object.keys(base)])].sort();
+  const dirs = paths.filter(p => p.endsWith('/'));
+  const files = paths.filter(p => !p.endsWith('/'));
+  let behind = false;
+  const parentsOf = path => {
+    const parts = path.split('/').filter(Boolean).slice(0, -1);
+    return parts.map((_, i) => parts.slice(0, i + 1).join('/') + '/');
+  };
+
+  // New folders first: a leader without saves is just a folder.
+  for (const p of dirs) {
+    if (local.has(p) && remote.has(p)) {
+      base[p] = { dir: true };
+    } else if (local.has(p) && !base[p]) {
+      await api('PUT', saveUrl(p));
+      remote.set(p, { dir: true });
+      base[p] = { dir: true };
+    } else if (remote.has(p) && !base[p]) {
+      if (full) {
+        const { dir, name } = await localParent(p, true);
+        await dir.getDirectoryHandle(name, { create: true });
+        local.set(p, { dir: true });
+        base[p] = { dir: true };
+      } else behind = true;
+    }
+  }
+
+  for (const p of files) {
+    const l = local.get(p), r = remote.get(p), b = base[p];
+    let mine = null;
+    if (l) {
+      try { mine = await localSave(p, l); } catch (e) { continue; }
+    }
+    const lh = mine ? mine.hash : null, rh = r ? r.sha256 : null, bh = b ? b.hash : null;
+    if (lh === rh) {
+      if (lh) base[p] = { hash: lh }; else delete base[p];
+      continue;
+    }
+    const localChanged = lh !== bh, remoteChanged = rh !== bh;
+    let send;
+    if (localChanged && !remoteChanged) send = true;
+    else if (!localChanged && remoteChanged) send = false;
+    else if (!l) send = false;            // deleted here, changed there: keep it
+    else if (!r) send = true;             // changed here, deleted there: keep it
+    else send = mine.file.lastModified >= r.mtime;  // both changed: newer wins
+    const upload = query => api('PUT', saveUrl(p, query), {
+      body: mine.file, headers: { 'X-Mtime': String(mine.file.lastModified) } });
+    if (send) {
+      if (l) {
+        await upload();
+        for (const d of parentsOf(p)) { remote.set(d, { dir: true }); base[d] = { dir: true }; }
+        base[p] = { hash: lh };
+      } else {
+        await api('DELETE', saveUrl(p));
+        delete base[p];
+      }
+    } else if (!full) {
+      behind = true;
+    } else if (r) {
+      // The copy that loses is kept on the server as an older version.
+      if (l && localChanged) await upload('?version=1');
+      const data = await (await api('GET', saveUrl(p))).arrayBuffer();
+      const { dir, name } = await localParent(p, true);
+      const w = await (await dir.getFileHandle(name, { create: true })).createWritable();
+      await w.write(data);
+      await w.close();
+      for (const d of parentsOf(p)) { local.set(d, { dir: true }); base[d] = { dir: true }; }
+      base[p] = { hash: rh };
+    } else {
+      await removeLocalSave(p);
+      delete base[p];
+    }
+  }
+
+  // Deleted folders last, deepest first.
+  for (const p of dirs.reverse()) {
+    if (!base[p] || (local.has(p) && remote.has(p))) continue;
+    if (local.has(p)) {             // deleted on the server
+      if (full) { await removeLocalSave(p); delete base[p]; }
+      else behind = true;
+    } else if (remote.has(p)) {     // deleted here
+      await api('DELETE', saveUrl(p));
+      delete base[p];
+    } else delete base[p];
+  }
+  await writeSyncBase(base);
+  return behind;
+}
+
+let syncing = false, syncQueued = null, toastTimer = 0;
+function showToast(text, sticky) {
+  $('toast').textContent = text;
+  $('toast').hidden = false;
+  clearTimeout(toastTimer);
+  if (!sticky) toastTimer = setTimeout(() => { $('toast').hidden = true; }, 8000);
+}
+
+function setSyncNote(text, bad) {
+  $('syncText').textContent = text;
+  $('syncText').classList.toggle('bad', !!bad);
+}
+
+let signedOut = false, behindWarned = false;
+async function runSync(full) {
+  if (signedOut) return;
+  if (syncing) { syncQueued = syncQueued || full; return; }
+  syncing = true;
+  const playing = document.body.classList.contains('playing');
+  try {
+    // Never pull while the game runs, whatever the caller asked for.
+    const behind = await syncSavesOnce(full && !playing);
+    setSyncNote('Saves synced with the server at ' + new Date().toLocaleTimeString() + '.');
+    if (behind && playing && !behindWarned) {
+      behindWarned = true;
+      showToast('Saves were changed from another browser. Reload the page to get them.');
+    }
+  } catch (e) {
+    if (e instanceof SignedOutError) {
+      signedOut = true;
+      setSyncNote('You are signed out. Reload the page to sign in; saves are not syncing.', true);
+      if (playing) showToast('Signed out: saves are no longer syncing. Reload the page.', true);
+    } else {
+      console.warn(e);
+      setSyncNote('Saves are not synced (the server cannot be reached). Retrying.', true);
+    }
+  }
+  syncing = false;
+  if (syncQueued !== null) {
+    const again = syncQueued;
+    syncQueued = null;
+    return runSync(again);
+  }
+}
+
+let syncSoonTimer = 0;
+// Called by the game right after it writes a save.
+function savesChanged() {
+  if (!hosted || !hosted.sync) return;
+  clearTimeout(syncSoonTimer);
+  syncSoonTimer = setTimeout(() => runSync(false), 1000);
+}
+
+async function startSync() {
+  await runSync(true);
+  savesSynced = true;
+  refreshButtons();
+  setInterval(() => runSync(true), 20000);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') runSync(false);
+  });
+}
+
+function applyHosting() {
+  if (!hosted) return;
+  $('logoutBtn').hidden = false;
+  $('savesHelp').textContent = 'Saves are kept on this server and follow you to every ' +
+    'browser you sign in from.';
+  if (hosted.mode === 'server') {
+    $('pickBtn').hidden = true;
+    $('importHelp').textContent = 'The game files come from this server and are copied ' +
+      'into this browser\'s storage once.';
+  }
+}
+
+$('logoutBtn').addEventListener('click', async () => {
+  try { await fetch('api/logout', { method: 'POST' }); } catch (e) {}
+  location.href = 'login';
 });
 
 $('playBtn').addEventListener('click', () => {
@@ -613,6 +900,7 @@ function setBusy(value, indicator) {
 
 var Module = {
   setBusy,
+  savesChanged,
   canvas: $('canvas'),
   print: (...a) => console.log(...a),
   printErr: (...a) => console.warn(...a),
@@ -623,18 +911,33 @@ var Module = {
   },
 };
 
-// When the server provides the game files (the client folder made by
-// web/make_client.py, or serve.py --game-dir), import them without asking.
+// Start-up. web/server.py answers api/config; plain static hosting and
+// serve.py do not, and then the page works on its own. When the server offers
+// the game files (server.py in "server" mode, or serve.py --game-dir), they
+// are imported without asking, and again when they change on the server.
 (async () => {
   await checkReady();
+  try {
+    const r = await fetch('api/config');
+    if (r.ok) hosted = await r.json();
+  } catch (e) {}
+  applyHosting();
+  refreshButtons();
+  if (hosted && hosted.sync) startSync();
+
   let manifest = null;
   try {
     const r = await fetch('game-manifest.json');
     if (r.ok) manifest = await r.json();
   } catch (e) {}
   if (!manifest) return;
-  $('serverBtn').hidden = false;
-  if (!filesReady) runImport(walkServer(manifest));
+  if (!hosted || hosted.mode !== 'server') $('serverBtn').hidden = false;
+  const changed = !!manifest.version &&
+    localStorage.getItem(GAME_VERSION_KEY) !== manifest.version;
+  if (!filesReady || (hosted && changed)) {
+    await runImport(walkServer(manifest));
+    if (filesReady && manifest.version) localStorage.setItem(GAME_VERSION_KEY, manifest.version);
+  }
 })();
 </script>
 {{{ SCRIPT }}}

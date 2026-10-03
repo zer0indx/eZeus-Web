@@ -18,12 +18,8 @@ import os
 import shutil
 import sys
 
-# Keep in sync with targetPath() in shell.html.
-SKIP_EXT = {"exe", "dll", "pdf", "zip", "lnk", "ico", "asi", "m3d", "msg",
-            "hashdb", "bik", "eng", "dat", "info", "inf", "ini"}
-SKIP_DIRS = {"binks"}
-# eZeus only checks that these exist; their contents are never read.
-EMPTY_DIRS = ["DATA"]
+from gamefiles import EMPTY_DIRS, find_ezeus_dir, walk_needed
+
 APP_FILES = ["eZeus.html", "eZeus.js", "eZeus.wasm"]
 PORT = 8765
 
@@ -72,27 +68,6 @@ Do not share this folder publicly.
 """
 
 
-def find_ezeus_dir(game_dir):
-    for name in os.listdir(game_dir):
-        path = os.path.join(game_dir, name)
-        if (name.lower().startswith("ezeus") and os.path.isdir(path)
-                and os.path.isfile(os.path.join(path, "interface.e"))):
-            return name
-    return None
-
-
-def needed(rel_parts):
-    """Whether a file (path parts relative to the game folder) is needed."""
-    name = rel_parts[-1]
-    ext = name.rsplit(".", 1)[-1].lower() if "." in name else ""
-    dirs = [d.lower() for d in rel_parts[:-1]]
-    if ext in SKIP_EXT or any(d in SKIP_DIRS for d in dirs):
-        return False
-    if dirs and dirs[0] in (d.lower() for d in EMPTY_DIRS):
-        return False
-    return True
-
-
 def copy_if_changed(src, dst):
     if os.path.exists(dst):
         s, d = os.stat(src), os.stat(dst)
@@ -135,25 +110,14 @@ def make_client(client_dir, game_dir):
 
     wanted = {os.path.normcase(os.path.join(client_dir, CLIENT_README_NAME))}
     copied = total = 0
-    for root, dirs, files in os.walk(game_dir):
-        rel_root = os.path.relpath(root, game_dir)
-        if rel_root == ".":
-            # Other eZeus folders (e.g. a source checkout) and hidden folders.
-            dirs[:] = [d for d in dirs if not d.startswith(".") and
-                       not (d.lower().startswith("ezeus") and d != ezeus)]
-        for name in files:
-            parts = [] if rel_root == "." else rel_root.split(os.sep)
-            parts.append(name)
-            if not needed(parts):
-                continue
-            if parts[0] == ezeus:
-                parts[0] = "eZeus"
-            src = os.path.join(root, name)
-            dst = os.path.join(client_dir, *parts)
-            wanted.add(os.path.normcase(dst))
-            total += os.path.getsize(src)
-            if copy_if_changed(src, dst):
-                copied += 1
+    for parts, src in walk_needed(game_dir):
+        if parts[0] == ezeus:
+            parts[0] = "eZeus"
+        dst = os.path.join(client_dir, *parts)
+        wanted.add(os.path.normcase(dst))
+        total += os.path.getsize(src)
+        if copy_if_changed(src, dst):
+            copied += 1
     for d in EMPTY_DIRS + [os.path.join("eZeus", "Bin"), os.path.join("eZeus", "Save")]:
         os.makedirs(os.path.join(client_dir, d), exist_ok=True)
     write_text(os.path.join(client_dir, CLIENT_README_NAME), CLIENT_README)

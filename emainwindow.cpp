@@ -344,6 +344,10 @@ bool eMainWindow::saveGame(const std::string& path) {
     }
     mCampaign->write(dst);
     file.close();
+#ifdef __EMSCRIPTEN__
+    // Lets the page copy the new save to the server it is hosted on.
+    EM_ASM({ if(Module.savesChanged) Module.savesChanged(); });
+#endif
     return true;
 }
 

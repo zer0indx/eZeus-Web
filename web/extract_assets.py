@@ -1,12 +1,17 @@
 """Copies the start page's art from the game files into web/assets.
 
 Usage: python web/extract_assets.py <eZeus folder>
+       python web/extract_assets.py --index <file>
 
 The eZeus folder is the one with interface.e and Fonts/Zeus.ttf (e.g.
 "Zeus and Poseidon/eZeus-0.8.2-beta" or "eZeus Web Client/eZeus"). The
 files belong to the game, so web/assets is not tracked by git; the build
 copies it next to the page.
+
+With --index it writes where the painting is inside the game files instead,
+for web/server.py, which then takes the art from the game folder it serves.
 """
+import json
 import os
 import re
 import shutil
@@ -32,6 +37,11 @@ def binary_entry(name):
 
 
 def main():
+    if len(sys.argv) == 3 and sys.argv[1] == "--index":
+        file, pos, size = binary_entry(MENU_IMAGE)
+        with open(sys.argv[2], "w", encoding="utf-8") as f:
+            json.dump({"menu.jpg": {"file": file, "pos": pos, "size": size}}, f)
+        return
     if len(sys.argv) != 2:
         sys.exit(__doc__)
     ezeus_dir = sys.argv[1]
