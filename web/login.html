@@ -6,65 +6,76 @@
 <meta name="robots" content="noindex">
 <title>eZeus Web</title>
 <style>
-  /* Same look as the game's start page. */
+  /* Theme: the same as on the game's start page (shell.html). */
   @font-face { font-family: "Marcellus SC"; font-display: swap;
     src: url(static/MarcellusSC-Regular.ttf) format("truetype"); }
   :root {
-    --sky-top: #6c7bd6; --sky-bottom: #b9c3ee;
-    --btn: #3586c4; --btn-hi: #9fd8f4; --btn-lo: #154772; --btn-text: #eef8ff;
-    --hover-text: #ffe27a;
-    --panel: #2a78b4; --panel-deep: #1b5786; --rim-in: #8fd0f0; --rim-out: #d99a86;
-    --title: #fff3c4; --text: #eef8ff; --muted: #bfe0f5; --bad: #ffb09a;
     --display: "Marcellus SC", "Palatino Linotype", Palatino, Georgia, serif;
+    --body: "Palatino Linotype", Palatino, Georgia, serif;
+    --body-size: 15px;
+    --backdrop: url(static/background.jpg);
+    --shade: linear-gradient(to bottom, #0000 55%, #0006);
+    /* Shown until the backdrop loads. */
+    --landscape:
+      radial-gradient(90% 38% at 20% 108%, #8d6a46 0 60%, #0000 60.5%),
+      radial-gradient(80% 32% at 85% 104%, #6f7f3e 0 60%, #0000 60.5%),
+      radial-gradient(45% 42% at 72% 92%, #9c9ad6 0 55%, #0000 55.5%),
+      radial-gradient(30% 22% at 22% 86%, #a9a8dc 0 55%, #0000 55.5%),
+      linear-gradient(#6c7bd6, #b9c3ee 80%);
+    --title: #fff3c4;
+    --title-shadow: 0 2px 0 #3a2a10, 0 0 3px #3a2a10, 0 6px 18px #0009;
+    --sub-shadow: 0 1px 0 #3a2a10, 0 2px 8px #000a;
+    --heading: #fff3c4; --text: #eef8ff; --muted: #bfe0f5; --bad: #ffb09a;
+    --accent: #ffe27a;
+    --text-shadow: 0 1px 2px #0b2b47, 0 0 6px #0b2b4780;
     /* The blue tile behind buttons and panels; darker where text is small. */
-    --pattern: url(static/pattern.webp);
-    --pattern-deep: linear-gradient(#0c3c66d9, #0c3c66d9), url(static/pattern.webp);
+    --btn-fill: linear-gradient(#ffffff26, #0000 45%, #00214033), url(static/pattern.webp), #3586c4;
+    --btn-hi: #9fd8f4; --btn-lo: #154772; --btn-outline: #0c2a45;
+    --btn-text: #eef8ff; --btn-off: #a9c6dc;
+    --panel-fill: url(static/pattern.webp), #2a78b4;
+    --inset-fill: linear-gradient(#0c3c66d9, #0c3c66d9), url(static/pattern.webp), #1b5786;
+    --rim-in: #8fd0f0; --rim-out: #d99a86; --frame: #5b2c22;
+    --bar-bg: #0d3557; --bar-fill: linear-gradient(#ffe48a, #f2c84b 50%, #b8892a);
+    --canvas-rendering: auto;
   }
+
   * { box-sizing: border-box; }
   html, body { margin: 0; min-height: 100%; }
   body {
     min-height: 100vh; display: flex; flex-direction: column; align-items: center;
     padding: 10vh 16px 32px; color: var(--text);
-    font: 15px/1.5 "Palatino Linotype", Palatino, Georgia, serif;
-    background:
-      linear-gradient(to bottom, #0000 55%, #0006),
-      url(static/background.jpg) center bottom / cover,
-      radial-gradient(90% 38% at 20% 108%, #8d6a46 0 60%, #0000 60.5%),
-      radial-gradient(80% 32% at 85% 104%, #6f7f3e 0 60%, #0000 60.5%),
-      radial-gradient(45% 42% at 72% 92%, #9c9ad6 0 55%, #0000 55.5%),
-      radial-gradient(30% 22% at 22% 86%, #a9a8dc 0 55%, #0000 55.5%),
-      linear-gradient(var(--sky-top), var(--sky-bottom) 80%);
+    font: var(--body-size)/1.5 var(--body);
+    background: var(--shade), var(--backdrop) center bottom / cover, var(--landscape);
     background-attachment: fixed;
   }
   h1 {
     margin: 0 0 5vh; font: 400 clamp(40px, 8vw, 72px)/1 var(--display); color: var(--title);
-    letter-spacing: .04em; text-align: center;
-    text-shadow: 0 2px 0 #3a2a10, 0 0 3px #3a2a10, 0 6px 18px #0009;
+    letter-spacing: .04em; text-align: center; text-shadow: var(--title-shadow);
   }
   form {
     width: min(380px, 100%); padding: 20px;
-    background: var(--pattern), var(--panel);
+    background: var(--panel-fill);
     border: 3px solid var(--rim-in); outline: 3px solid var(--rim-out);
-    box-shadow: 0 0 0 4px #5b2c22, 0 10px 30px #000a;
+    box-shadow: 0 0 0 4px var(--frame), 0 10px 30px #000a;
   }
-  label { display: block; margin-bottom: 14px; text-shadow: 0 1px 2px #0b2b47, 0 0 6px #0b2b4780;
+  label { display: block; margin-bottom: 14px; text-shadow: var(--text-shadow);
     font: 400 15px/1.3 var(--display);
-    letter-spacing: .05em; color: var(--title); }
+    letter-spacing: .05em; color: var(--heading); }
   input {
     display: block; width: 100%; margin-top: 6px; padding: 9px 10px;
-    font: 16px/1.2 "Palatino Linotype", Palatino, Georgia, serif; color: var(--text);
-    background: var(--pattern-deep), var(--panel-deep); border: 0;
+    font: 16px/1.2 var(--body); color: var(--text);
+    background: var(--inset-fill); border: 0;
     box-shadow: inset 2px 2px 4px #0008, inset -1px -1px 0 #ffffff22;
   }
-  input:focus { outline: 2px solid var(--hover-text); }
+  input:focus { outline: 2px solid var(--accent); }
   button {
     width: 100%; margin-top: 4px; padding: 10px 16px; cursor: pointer;
-    font: 400 20px/1.2 var(--display); letter-spacing: .05em; color: var(--hover-text);
-    background: linear-gradient(#ffffff26, #0000 45%, #00214033), var(--pattern), var(--btn);
+    font: 400 20px/1.2 var(--display); letter-spacing: .05em; color: var(--accent);
+    background: var(--btn-fill);
     border: 2px solid; border-color: var(--btn-hi) var(--btn-lo) var(--btn-lo) var(--btn-hi);
-    outline: 1px solid #0c2a45; text-shadow: 0 1px 1px #0b2b47;
+    outline: 1px solid var(--btn-outline); text-shadow: var(--text-shadow);
   }
-  button:disabled { cursor: default; color: #a9c6dc; filter: saturate(.6); }
+  button:disabled { cursor: default; color: var(--btn-off); filter: saturate(.6); }
   #message { min-height: 1.5em; margin: 12px 0 0; text-align: center; color: var(--bad); }
 </style>
 </head>

@@ -5,56 +5,65 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>eZeus Web</title>
 <style>
-  /* Styled after the game's own menus: blue framed buttons over a painting,
-     and blue message panels with a light inner rim. The background and the
-     Marcellus SC font (SIL Open Font License) are in static/. */
+  /* Theme: the fonts, colours and pictures of this game, after its own menus
+     (blue framed buttons over a painting, blue message panels with a light
+     inner rim). The background and the Marcellus SC font (SIL Open Font
+     License) are in static/. Everything after this block is the same in
+     eZeus Web, Akhenaten Web and Augustus Web. */
   @font-face { font-family: "Marcellus SC"; font-display: swap;
     src: url(static/MarcellusSC-Regular.ttf) format("truetype"); }
   :root {
-    --sky-top: #6c7bd6; --sky-bottom: #b9c3ee;
-    --btn: #3586c4; --btn-hi: #9fd8f4; --btn-lo: #154772; --btn-text: #eef8ff;
-    --hover-text: #ffe27a;
-    --panel: #2a78b4; --panel-deep: #1b5786; --rim-in: #8fd0f0; --rim-out: #d99a86;
-    --title: #fff3c4; --text: #eef8ff; --muted: #bfe0f5; --bad: #ffb09a;
-    --gold: #f2c84b;
     --display: "Marcellus SC", "Palatino Linotype", Palatino, Georgia, serif;
-    /* The blue tile behind buttons and panels; darker where text is small. */
-    --pattern: url(static/pattern.webp);
-    --pattern-deep: linear-gradient(#0c3c66d9, #0c3c66d9), url(static/pattern.webp);
-    /* Shown until static/background.jpg loads. */
+    --body: "Palatino Linotype", Palatino, Georgia, serif;
+    --body-size: 15px;
+    --backdrop: url(static/background.jpg);
+    --shade: linear-gradient(to bottom, #0000 55%, #0006);
+    /* Shown until the backdrop loads. */
     --landscape:
       radial-gradient(90% 38% at 20% 108%, #8d6a46 0 60%, #0000 60.5%),
       radial-gradient(80% 32% at 85% 104%, #6f7f3e 0 60%, #0000 60.5%),
       radial-gradient(45% 42% at 72% 92%, #9c9ad6 0 55%, #0000 55.5%),
       radial-gradient(30% 22% at 22% 86%, #a9a8dc 0 55%, #0000 55.5%),
-      linear-gradient(var(--sky-top), var(--sky-bottom) 80%);
+      linear-gradient(#6c7bd6, #b9c3ee 80%);
+    --title: #fff3c4;
+    --title-shadow: 0 2px 0 #3a2a10, 0 0 3px #3a2a10, 0 6px 18px #0009;
+    --sub-shadow: 0 1px 0 #3a2a10, 0 2px 8px #000a;
+    --heading: #fff3c4; --text: #eef8ff; --muted: #bfe0f5; --bad: #ffb09a;
+    --accent: #ffe27a;
+    --text-shadow: 0 1px 2px #0b2b47, 0 0 6px #0b2b4780;
+    /* The blue tile behind buttons and panels; darker where text is small. */
+    --btn-fill: linear-gradient(#ffffff26, #0000 45%, #00214033), url(static/pattern.webp), #3586c4;
+    --btn-hi: #9fd8f4; --btn-lo: #154772; --btn-outline: #0c2a45;
+    --btn-text: #eef8ff; --btn-off: #a9c6dc;
+    --panel-fill: url(static/pattern.webp), #2a78b4;
+    --inset-fill: linear-gradient(#0c3c66d9, #0c3c66d9), url(static/pattern.webp), #1b5786;
+    --rim-in: #8fd0f0; --rim-out: #d99a86; --frame: #5b2c22;
+    --bar-bg: #0d3557; --bar-fill: linear-gradient(#ffe48a, #f2c84b 50%, #b8892a);
+    --canvas-rendering: auto;
   }
+
   * { box-sizing: border-box; }
   html, body { margin: 0; min-height: 100%; }
   body {
     color: var(--text);
-    font: 15px/1.5 "Palatino Linotype", Palatino, Georgia, serif;
+    font: var(--body-size)/1.5 var(--body);
     background: #000;
   }
   #setup {
     min-height: 100vh; display: flex; flex-direction: column; align-items: center;
     padding: 6vh 16px 32px;
-    background:
-      linear-gradient(to bottom, #0000 55%, #0006),
-      url(static/background.jpg),
-      var(--landscape);
+    background: var(--shade), var(--backdrop), var(--landscape);
     background-size: cover; background-position: center bottom;
   }
 
   .title { text-align: center; margin-bottom: 4vh; }
   h1 {
     margin: 0; font: 400 clamp(40px, 8vw, 72px)/1 var(--display); color: var(--title);
-    letter-spacing: .04em;
-    text-shadow: 0 2px 0 #3a2a10, 0 0 3px #3a2a10, 0 6px 18px #0009;
+    letter-spacing: .04em; text-shadow: var(--title-shadow);
   }
   .sub {
     margin: 10px 0 0; font: 400 clamp(14px, 2.2vw, 18px)/1.3 var(--display);
-    color: var(--title); letter-spacing: .06em; text-shadow: 0 1px 0 #3a2a10, 0 2px 8px #000a;
+    color: var(--title); letter-spacing: .06em; text-shadow: var(--sub-shadow);
   }
 
   /* Main-menu style stack of buttons. */
@@ -65,70 +74,71 @@
   button.menu-btn {
     width: 100%; padding: 9px 16px; cursor: pointer;
     font: 400 19px/1.2 var(--display); letter-spacing: .05em; color: var(--btn-text);
-    background: linear-gradient(#ffffff26, #0000 45%, #00214033), var(--pattern), var(--btn);
+    background: var(--btn-fill);
     border: 2px solid; border-color: var(--btn-hi) var(--btn-lo) var(--btn-lo) var(--btn-hi);
-    outline: 1px solid #0c2a45; box-shadow: 0 3px 10px #0007;
-    text-shadow: 0 1px 2px #0b2b47, 0 0 6px #0b2b4780;
+    outline: 1px solid var(--btn-outline); box-shadow: 0 3px 10px #0007;
+    text-shadow: var(--text-shadow);
   }
-  button.menu-btn:hover:not(:disabled), button.menu-btn:focus-visible { color: var(--hover-text); }
+  button.menu-btn:hover:not(:disabled), button.menu-btn:focus-visible { color: var(--accent); }
   button.menu-btn:active:not(:disabled) {
     border-color: var(--btn-lo) var(--btn-hi) var(--btn-hi) var(--btn-lo);
   }
-  button.menu-btn:disabled { cursor: default; color: #a9c6dc; filter: saturate(.6); }
-  button.menu-btn.play { font-size: 26px; padding: 12px 16px; color: var(--hover-text); }
+  button.menu-btn:disabled { cursor: default; color: var(--btn-off); filter: saturate(.6); }
+  button.menu-btn.play { font-size: 26px; padding: 12px 16px; color: var(--accent); }
   button.menu-btn.small { font-size: 15px; padding: 6px 12px; width: auto; }
 
   /* Message panel like the game's dialogs. */
   .panel {
     width: min(560px, 100%); margin-top: 4vh; padding: 16px 20px;
-    background: var(--pattern), var(--panel);
+    background: var(--panel-fill);
     border: 3px solid var(--rim-in); outline: 3px solid var(--rim-out);
-    box-shadow: 0 0 0 4px #5b2c22, 0 10px 30px #000a;
+    box-shadow: 0 0 0 4px var(--frame), 0 10px 30px #000a;
   }
   .panel p { margin: 0 0 10px; }
   .panel p:last-child { margin-bottom: 0; }
-  #status { text-shadow: 0 1px 2px #0b2b47, 0 0 6px #0b2b4780;
-    font: 400 18px/1.3 var(--display); color: var(--title); text-align: center;
+  #status { text-shadow: var(--text-shadow);
+    font: 400 18px/1.3 var(--display); color: var(--heading); text-align: center;
     letter-spacing: .03em; margin-bottom: 12px; }
   #status.bad { color: var(--bad); }
-  .inset { background: var(--pattern-deep), var(--panel-deep); box-shadow: inset 2px 2px 4px #0008, inset -1px -1px 0 #ffffff22;
+  .inset { background: var(--inset-fill);
+    box-shadow: inset 2px 2px 4px #0008, inset -1px -1px 0 #ffffff22;
     padding: 10px 12px; margin-top: 10px; }
-  .help { color: var(--muted); font-size: 14px; }
+  .help { color: var(--muted); font-size: .93em; }
   .help b { color: var(--text); font-weight: 600; }
-  .bar { height: 12px; background: #0d3557; box-shadow: inset 1px 1px 3px #000a; }
-  .bar > div { height: 100%; width: 0; background: linear-gradient(#ffe48a, var(--gold) 50%, #b8892a); }
-  #progressText, #savesText, #syncText { color: var(--muted); font-size: 13px; margin-top: 6px;
+  .bar { height: 12px; background: var(--bar-bg); box-shadow: inset 1px 1px 3px #000a; }
+  .bar > div { height: 100%; width: 0; background: var(--bar-fill); }
+  #progressText, #savesText, #syncText { color: var(--muted); font-size: .87em; margin-top: 6px;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   #savesText:empty, #syncText:empty { display: none; }
   #syncText.bad { color: var(--bad); white-space: normal; }
   .footer { margin-top: 12px; display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
-  code { font-size: 13px; background: #0003; padding: 0 4px; }
+  code { font-size: .87em; background: #0003; padding: 0 4px; }
 
   #game { display: none; position: fixed; inset: 0; background: #000;
     align-items: center; justify-content: center; }
-  #canvas { display: block; outline: none; }
+  #canvas { display: block; outline: none; image-rendering: var(--canvas-rendering); }
   body.playing #setup { display: none; }
   body.playing #game { display: flex; }
   /* Shown while the game blocks the main thread. Only a transform animates,
      so the browser keeps spinning it even then. */
   #busy { position: fixed; left: 50%; top: 50%; z-index: 10; pointer-events: none;
     transform: translate(-50%, -50%); display: flex; align-items: center; gap: 12px;
-    padding: 10px 18px; font: 400 18px/1 var(--display); color: var(--title);
-    background: var(--pattern), var(--panel); border: 2px solid var(--rim-in);
-    outline: 2px solid var(--rim-out); text-shadow: 0 1px 2px #0b2b47;
+    padding: 10px 18px; font: 400 18px/1 var(--display); color: var(--heading);
+    background: var(--panel-fill); border: 2px solid var(--rim-in);
+    outline: 2px solid var(--rim-out); text-shadow: var(--text-shadow);
     box-shadow: 0 6px 20px #000a; }
   #busy[hidden] { display: none; }
   /* A note over the running game, e.g. when saves stop syncing. */
   #toast { position: fixed; left: 50%; top: 16px; z-index: 11; pointer-events: none;
     transform: translateX(-50%); max-width: min(520px, calc(100vw - 32px));
-    padding: 10px 16px; font: 15px/1.4 "Palatino Linotype", Palatino, Georgia, serif;
-    color: var(--title); text-align: center;
-    background: var(--pattern), var(--panel); border: 2px solid var(--rim-in);
-    outline: 2px solid var(--rim-out); text-shadow: 0 1px 2px #0b2b47;
+    padding: 10px 16px; font: var(--body-size)/1.4 var(--body);
+    color: var(--heading); text-align: center;
+    background: var(--panel-fill); border: 2px solid var(--rim-in);
+    outline: 2px solid var(--rim-out); text-shadow: var(--text-shadow);
     box-shadow: 0 6px 20px #000a; }
   #toast[hidden] { display: none; }
   #busy .spinner { width: 20px; height: 20px; border-radius: 50%;
-    border: 3px solid #ffffff40; border-top-color: var(--gold);
+    border: 3px solid var(--rim-in); border-top-color: var(--accent);
     animation: spin .8s linear infinite; will-change: transform; }
   @keyframes spin { to { transform: rotate(360deg); } }
 </style>
@@ -159,9 +169,7 @@
       <div id="progressText"></div>
     </div>
     <div class="inset help" id="importCard">
-      <p id="importHelp">Choose your <b>Zeus and Poseidon</b> folder, with the eZeus folder
-        (<code>interface.e</code>, <code>i30.e</code>) inside. The files are copied into this
-        browser's storage, so this is needed only once.</p>
+      <p id="importHelp"></p>
       <p id="savesHelp">Saves stay in this browser: download them to keep a backup or to move
         them to another browser.</p>
       <div id="syncText"></div>
@@ -183,21 +191,96 @@
 <script>
 'use strict';
 const $ = id => document.getElementById(id);
-const READY_MARKER = '.ezeus-web-ready';
+// ---- This game -------------------------------------------------------------
+// Everything down to "Shared" is about eZeus. The rest of the page is the same
+// in eZeus Web, Akhenaten Web and Augustus Web.
+const GAME_NAME = 'eZeus Web';
+const GAME_KEY = 'ezeus';  // storage keys and file names
+// The game is played with a mouse and keyboard, and mobile Safari hangs
+// trying to start it.
+const NEEDS_MOUSE = true;
+const MAIN_ARGS = [];
+// Folders in this browser's storage (OPFS): the one with the ready marker and
+// the sync state, and the one where the game reads and writes its saves.
+const STATE_DIR = ['eZeus'];
+const SAVE_DIR = ['eZeus', 'Save'];
+const IMPORT_HELP = 'Choose your <b>Zeus and Poseidon</b> folder, with the eZeus folder ' +
+  '(<code>interface.e</code>, <code>i30.e</code>) inside. The files are copied into this ' +
+  'browser\'s storage, so this is needed only once.';
 // Not needed by eZeus: installers, Windows binaries, manuals, FMV videos and
 // the original game's text and setup files (eZeus has its own .xml copies).
-// Keep in sync with web/make_client.py.
+// Keep in sync with web/gamefiles.py.
 const SKIP_EXT = new Set(['exe', 'dll', 'pdf', 'zip', 'lnk', 'ico', 'asi', 'm3d', 'msg',
   'hashdb', 'bik', 'eng', 'dat', 'info', 'inf', 'ini']);
 const SKIP_DIRS = new Set(['binks']);
 // eZeus only checks that these top-level folders exist; its graphics come from
 // the .e files. DATA alone is ~370 MB.
 const EMPTY_DIRS = ['DATA'];
+// Created even when nothing is copied into them. eGameDir resolves everything
+// relative to eZeus/Bin, so it must exist.
+const REQUIRED_DIRS = [['eZeus', 'Bin'], ...EMPTY_DIRS.map(d => [d])];
 
-// Phones and tablets: the game is played with a mouse and keyboard, and
-// mobile Safari hangs trying to start it. They get a notice instead of the
-// engine and the game files.
-const unsupported = (() => {
+// Maps a path relative to the chosen folder to its place in OPFS, or null to skip it.
+// ezeusDir is the top-level folder holding interface.e; it becomes "eZeus".
+function targetPath(parts, ezeusDir) {
+  const dirs = parts.slice(0, -1).map(d => d.toLowerCase());
+  const name = parts[parts.length - 1];
+  const ext = name.includes('.') ? name.split('.').pop().toLowerCase() : '';
+  if (SKIP_EXT.has(ext) || dirs.some(d => SKIP_DIRS.has(d))) return null;
+  if (EMPTY_DIRS.some(d => d.toLowerCase() === dirs[0])) return null;
+  if (parts.length > 1 && /^ezeus/i.test(parts[0])) {
+    if (parts[0] !== ezeusDir) return null;
+    parts = ['eZeus', ...parts.slice(1)];
+  }
+  return parts;
+}
+
+// Picks the files to import from everything in the chosen folder and gives
+// each its place in OPFS. Throws when this is not the game's folder.
+function planImport(all) {
+  const iface = all.find(e => e.parts.length === 2 && /^ezeus/i.test(e.parts[0]) &&
+    e.parts[1].toLowerCase() === 'interface.e');
+  const ezeusDir = iface && iface.parts[0];
+  const list = [];
+  for (const e of all) {
+    const t = targetPath(e.parts, ezeusDir);
+    if (t) list.push({ ...e, target: t });
+  }
+  const has = p => list.some(e => e.target.join('/').toLowerCase() === p);
+  const hasDir = p => list.some(e => e.target.join('/').toLowerCase().startsWith(p));
+  if (!has('ezeus/interface.e')) {
+    throw new Error('eZeus/interface.e not found. Choose the Zeus and Poseidon folder ' +
+      'that contains the eZeus folder.');
+  }
+  if (!hasDir('audio/wavs/')) {
+    throw new Error('Audio/Wavs not found. Choose the Zeus and Poseidon folder.');
+  }
+  return list;
+}
+
+// Removes files earlier versions of this page imported but eZeus never reads.
+async function tidyStorage() {
+  const root = await opfsRoot();
+  for (const d of EMPTY_DIRS) {
+    try {
+      const dir = await root.getDirectoryHandle(d);
+      for await (const [name] of dir.entries()) await dir.removeEntry(name, { recursive: true });
+    } catch (e) {}
+  }
+  for await (const [name, handle] of root.entries()) {
+    const ext = name.includes('.') ? name.split('.').pop().toLowerCase() : '';
+    if (handle.kind === 'file' && SKIP_EXT.has(ext)) await root.removeEntry(name);
+  }
+}
+
+// ---- Shared ----------------------------------------------------------------
+const READY_MARKER = `.${GAME_KEY}-web-ready`;
+const GAME_VERSION_KEY = `${GAME_KEY}-game-version`;
+$('importHelp').innerHTML = IMPORT_HELP;
+
+// Phones and tablets get a notice instead of the engine and the game files
+// when the game cannot be played on them.
+const unsupported = NEEDS_MOUSE && (() => {
   const ua = navigator.userAgent;
   const ios = /iPhone|iPad|iPod/.test(ua) ||
     (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
@@ -228,7 +311,7 @@ function refreshButtons() {
     }
     // Lets a device that imported the files earlier free the space.
     $('clearBtn').hidden = !filesReady;
-    setStatus('This device is not supported. eZeus Web needs a computer with a mouse ' +
+    setStatus(`This device is not supported. ${GAME_NAME} needs a computer with a mouse ` +
       'and keyboard.', true);
     return;
   }
@@ -240,7 +323,10 @@ function refreshButtons() {
   const fromServer = !!(hosted && hosted.mode === 'server');
   const outdated = !!(serverFiles && serverFiles.version && fromServer &&
     localStorage.getItem(GAME_VERSION_KEY) !== serverFiles.version);
-  $('serverBtn').hidden = !serverFiles || importing || (filesReady && !outdated);
+  // With the local game source the server has no game to offer, only what
+  // the engine adds to one; that comes along with the chosen folder.
+  $('serverBtn').hidden = !serverFiles || importing || (filesReady && !outdated) ||
+    !!(hosted && !fromServer);
   if (serverFiles) {
     const mb = Math.round(serverFiles.files.reduce((sum, f) => sum + f.size, 0) / 2 ** 20);
     $('serverBtn').textContent = filesReady ? 'Update Game Files'
@@ -264,45 +350,20 @@ function refreshButtons() {
 
 async function opfsRoot() { return navigator.storage.getDirectory(); }
 
-// Removes files earlier versions of this page imported but eZeus never reads.
-async function pruneUnneeded() {
-  const root = await opfsRoot();
-  for (const d of EMPTY_DIRS) {
-    try {
-      const dir = await root.getDirectoryHandle(d);
-      for await (const [name] of dir.entries()) await dir.removeEntry(name, { recursive: true });
-    } catch (e) {}
-  }
-  for await (const [name, handle] of root.entries()) {
-    const ext = name.includes('.') ? name.split('.').pop().toLowerCase() : '';
-    if (handle.kind === 'file' && SKIP_EXT.has(ext)) await root.removeEntry(name);
-  }
+// The folder at a path from the OPFS root.
+async function dirAt(parts, create) {
+  let dir = await opfsRoot();
+  for (const p of parts) dir = await dir.getDirectoryHandle(p, { create });
+  return dir;
 }
 
 async function checkReady() {
   try {
-    const root = await opfsRoot();
-    const ez = await root.getDirectoryHandle('eZeus');
-    await ez.getFileHandle(READY_MARKER);
+    await (await dirAt(STATE_DIR, false)).getFileHandle(READY_MARKER);
     filesReady = true;
   } catch (e) { filesReady = false; }
-  if (filesReady) await pruneUnneeded().catch(e => console.warn(e));
+  if (filesReady) await tidyStorage().catch(e => console.warn(e));
   refreshButtons();
-}
-
-// Maps a path relative to the chosen folder to its place in OPFS, or null to skip it.
-// ezeusDir is the top-level folder holding interface.e; it becomes "eZeus".
-function targetPath(parts, ezeusDir) {
-  const dirs = parts.slice(0, -1).map(d => d.toLowerCase());
-  const name = parts[parts.length - 1];
-  const ext = name.includes('.') ? name.split('.').pop().toLowerCase() : '';
-  if (SKIP_EXT.has(ext) || dirs.some(d => SKIP_DIRS.has(d))) return null;
-  if (EMPTY_DIRS.some(d => d.toLowerCase() === dirs[0])) return null;
-  if (parts.length > 1 && /^ezeus/i.test(parts[0])) {
-    if (parts[0] !== ezeusDir) return null;
-    parts = ['eZeus', ...parts.slice(1)];
-  }
-  return parts;
 }
 
 async function* walkHandle(dir, prefix) {
@@ -324,29 +385,13 @@ function* walkInput(files) {
 async function importFiles(entries) {
   const all = [];
   for await (const e of entries) all.push(e);
-  const iface = all.find(e => e.parts.length === 2 && /^ezeus/i.test(e.parts[0]) &&
-    e.parts[1].toLowerCase() === 'interface.e');
-  const ezeusDir = iface && iface.parts[0];
-  const list = [];
-  for (const e of all) {
-    const t = targetPath(e.parts, ezeusDir);
-    if (t) list.push({ ...e, target: t });
-  }
-  const has = p => list.some(e => e.target.join('/').toLowerCase() === p);
-  const hasDir = p => list.some(e => e.target.join('/').toLowerCase().startsWith(p));
-  if (!has('ezeus/interface.e')) {
-    throw new Error('eZeus/interface.e not found. Choose the Zeus and Poseidon folder ' +
-      'that contains the eZeus folder.');
-  }
-  if (!hasDir('audio/wavs/')) {
-    throw new Error('Audio/Wavs not found. Choose the Zeus and Poseidon folder.');
-  }
+  const list = planImport(all);
 
   $('progressCard').hidden = false;
   $('pickBtn').disabled = true;
   const root = await opfsRoot();
   // A previous import may have been partial: drop the marker until done.
-  try { await (await root.getDirectoryHandle('eZeus')).removeEntry(READY_MARKER); } catch (e) {}
+  try { await (await dirAt(STATE_DIR, false)).removeEntry(READY_MARKER); } catch (e) {}
 
   const files = await Promise.all(list.map(async e => ({ ...e, file: await e.getFile() })));
   const total = files.reduce((s, e) => s + e.file.size, 0);
@@ -361,15 +406,14 @@ async function importFiles(entries) {
     }
     return handle;
   }
-  // eGameDir resolves everything relative to eZeus/Bin, so it must exist.
-  await dirFor(['eZeus', 'Bin']);
-  for (const d of EMPTY_DIRS) await dirFor([d]);
+  for (const d of [STATE_DIR, SAVE_DIR, ...REQUIRED_DIRS]) await dirFor(d);
 
   async function copy(e) {
     const dir = await dirFor(e.target.slice(0, -1));
     const name = e.target[e.target.length - 1];
     // Never replace saves made in the browser with ones from the folder.
-    const isSave = e.target[0] === 'eZeus' && e.target[1] === 'Save';
+    const isSave = SAVE_DIR.every((d, i) =>
+      (e.target[i] || '').toLowerCase() === d.toLowerCase());
     let skip = false;
     try {
       const existing = await (await dir.getFileHandle(name)).getFile();
@@ -389,11 +433,11 @@ async function importFiles(entries) {
   await Promise.all(Array.from({ length: 8 }, async () => {
     while (queue.length) await copy(queue.shift());
   }));
-  const ez = await root.getDirectoryHandle('eZeus');
-  const marker = await (await ez.getFileHandle(READY_MARKER, { create: true })).createWritable();
+  const marker = await (await (await dirAt(STATE_DIR, true))
+    .getFileHandle(READY_MARKER, { create: true })).createWritable();
   await marker.write(new Date().toISOString());
   await marker.close();
-  await pruneUnneeded();
+  await tidyStorage();
   $('progressText').textContent = `Done: ${files.length} files.`;
   $('pickBtn').disabled = false;
 }
@@ -418,9 +462,9 @@ async function runImport(entries) {
 $('pickBtn').addEventListener('click', async () => {
   if (window.showDirectoryPicker) {
     let dir;
-    try { dir = await showDirectoryPicker({ id: 'zeus', mode: 'read' }); }
+    try { dir = await showDirectoryPicker({ id: GAME_KEY, mode: 'read' }); }
     catch (e) { return; }
-    runImport(walkHandle(dir, []));
+    runImport(withExtras(walkHandle(dir, [])));
   } else {
     $('dirInput').click();
   }
@@ -452,7 +496,14 @@ $('serverBtn').addEventListener('click', async () => {
   refreshButtons();
 });
 
-$('dirInput').addEventListener('change', e => runImport(walkInput(e.target.files)));
+$('dirInput').addEventListener('change', e => runImport(withExtras(walkInput(e.target.files))));
+
+// The chosen folder plus, with the local game source, the files the server
+// has for the engine to find in it.
+async function* withExtras(entries) {
+  yield* entries;
+  if (hosted && hosted.mode !== 'server' && serverFiles) yield* walkServer(serverFiles);
+}
 
 $('clearBtn').addEventListener('click', async () => {
   if (!confirm(hosted
@@ -571,10 +622,7 @@ async function readZip(buffer) {
   return out;
 }
 
-async function saveDir(create) {
-  const ez = await (await opfsRoot()).getDirectoryHandle('eZeus');
-  return ez.getDirectoryHandle('Save', { create });
-}
+function saveDir(create) { return dirAt(SAVE_DIR, create); }
 
 async function collectSaves(dir, prefix, out) {
   for await (const [name, handle] of dir.entries()) {
@@ -601,7 +649,7 @@ $('downloadSavesBtn').addEventListener('click', async () => {
     const url = URL.createObjectURL(makeZip(entries));
     const a = document.createElement('a');
     a.href = url;
-    a.download = `ezeus-saves-${new Date().toISOString().slice(0, 10)}.zip`;
+    a.download = `${GAME_KEY}-saves-${new Date().toISOString().slice(0, 10)}.zip`;
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 10000);
     $('savesText').textContent = `Downloaded ${files} save files.`;
@@ -644,12 +692,11 @@ $('savesInput').addEventListener('change', async e => {
   }
 });
 
-// Saves sync with web/server.py. The saves live in eZeus/Save in this
+// Saves sync with web/server.py. The saves live in SAVE_DIR in this
 // browser's storage, where the game reads and writes them; the page copies
 // changes both ways. SYNC_BASE remembers what both sides had after the last
 // sync, which tells a save deleted here from one added there.
 const SYNC_BASE = '.sync-base.json';
-const GAME_VERSION_KEY = 'ezeus-game-version';
 const hashCache = new Map(); // path -> { size, lm, hash }
 class SignedOutError extends Error {}
 
@@ -662,19 +709,15 @@ async function api(method, url, options) {
 const saveUrl = (path, query) =>
   'api/saves/' + path.split('/').map(encodeURIComponent).join('/') + (query || '');
 
-async function ezeusHandle() {
-  return (await opfsRoot()).getDirectoryHandle('eZeus', { create: true });
-}
-
 async function readSyncBase() {
   try {
-    const file = await (await (await ezeusHandle()).getFileHandle(SYNC_BASE)).getFile();
+    const file = await (await (await dirAt(STATE_DIR, true)).getFileHandle(SYNC_BASE)).getFile();
     return JSON.parse(await file.text());
   } catch (e) { return {}; }
 }
 
 async function writeSyncBase(base) {
-  const w = await (await (await ezeusHandle()).getFileHandle(SYNC_BASE, { create: true }))
+  const w = await (await (await dirAt(STATE_DIR, true)).getFileHandle(SYNC_BASE, { create: true }))
     .createWritable();
   await w.write(JSON.stringify(base));
   await w.close();
@@ -905,10 +948,24 @@ $('logoutBtn').addEventListener('click', async () => {
   location.href = 'login';
 });
 
+// Back to the start page after the engine died; it cannot be started twice.
+function gameStopped(what) {
+  console.error(what);
+  runtimeReady = false;
+  document.body.classList.remove('playing');
+  refreshButtons();
+  setStatus(`The game crashed: ${what}. Reload the page to try again.`, true);
+}
+
 $('playBtn').addEventListener('click', () => {
   document.body.classList.add('playing');
   $('canvas').focus();
-  Module.callMain([]);
+  try {
+    Module.callMain(MAIN_ARGS);
+  } catch (e) {
+    // A WebAssembly trap is not an abort(), so onAbort never sees it.
+    gameStopped(e.message || e);
+  }
 });
 
 $('canvas').addEventListener('contextmenu', e => e.preventDefault());
@@ -947,10 +1004,7 @@ var Module = {
   print: (...a) => console.log(...a),
   printErr: (...a) => console.warn(...a),
   onRuntimeInitialized() { runtimeReady = true; refreshButtons(); },
-  onAbort(what) {
-    document.body.classList.remove('playing');
-    setStatus('The game crashed: ' + what, true);
-  },
+  onAbort(what) { gameStopped(what); },
 };
 
 // Start-up. web/server.py answers api/config; plain static hosting and

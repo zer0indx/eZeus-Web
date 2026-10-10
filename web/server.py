@@ -13,11 +13,15 @@ Configuration (environment variables):
                         "local" (default): each browser picks a game folder
   EZEUS_GAME_DIR        Zeus and Poseidon folder (default /game)
   EZEUS_DATA_DIR        saves and the session secret (default /data)
-  EZEUS_APP_DIR         folder with eZeus.html, eZeus.js, eZeus.wasm
+  EZEUS_APP_DIR         folder with eZeus.html and the engine next to it
   EZEUS_PORT            port to listen on (default 8080)
   EZEUS_SESSION_DAYS    how long a sign-in lasts (default 30)
   EZEUS_TRUST_PROXY     "1" (default): take the client address and scheme
                         from X-Forwarded-For / X-Forwarded-Proto
+
+This file is the same in eZeus Web, Akhenaten Web and Augustus Web except for
+the "This game" block below; what a game needs from its folder is decided by
+gamefiles.py next to it.
 """
 import base64
 import datetime
@@ -38,8 +42,17 @@ import urllib.parse
 
 import gamefiles
 
+# ---- This game ---------------------------------------------------------------
+NAME = "eZeus Web"
+# Starts the name of every environment variable.
+PREFIX = "EZEUS"
+DEFAULT_USER = "zeus"
+# The start page, in the app folder.
+PAGE = "eZeus.html"
+
+# ---- Shared ------------------------------------------------------------------
 VERSION = "1"
-COOKIE = "ezeus_session"
+COOKIE = PREFIX.lower() + "_session"
 MIN_PASSWORD_LENGTH = 12
 MAX_SAVE_BYTES = 128 * 2**20
 SAVE_VERSIONS_KEPT = 5
@@ -63,7 +76,7 @@ CONTENT_SECURITY_POLICY = "; ".join([
 
 
 def env(name, default=None):
-    value = os.environ.get(name)
+    value = os.environ.get(f"{PREFIX}_{name}")
     return value if value not in (None, "") else default
 
 
@@ -167,11 +180,11 @@ class SaveError(Exception):
 
 
 def save_parts(path):
-    """Validates a save path ("Leader/name.ez") and returns its parts."""
+    """Validates a save path ("Folder/name") and returns its parts."""
     if len(path) > 400:
         raise SaveError(400, "path too long")
     parts = [p for p in path.split("/") if p != ""]
-    if not parts or len(parts) > 4:
+    if not parts or len(parts) > 5:
         raise SaveError(400, "bad path")
     for part in parts:
         if (part in (".", "..") or part.startswith(".") or len(part) > 120
@@ -216,14 +229,15 @@ class Saves:
         entries = []
         with self.lock:
             for root, dirs, files in os.walk(self.root):
-                dirs.sort()
+                # Names with a leading dot are not valid save paths.
+                dirs[:] = sorted(d for d in dirs if not d.startswith("."))
                 rel = os.path.relpath(root, self.root).replace(os.sep, "/")
                 prefix = "" if rel == "." else rel + "/"
                 if prefix:
                     entries.append({"path": prefix, "dir": True})
                 for name in sorted(files):
                     full = os.path.join(root, name)
-                    if name.endswith(".part"):
+                    if name.endswith(".part") or name.startswith("."):
                         continue
                     st = os.stat(full)
                     entries.append({"path": prefix + name, "size": st.st_size,
@@ -303,11 +317,17 @@ class Saves:
 # --- Game files -------------------------------------------------------------
 
 class GameFiles:
-    """The needed files of the game folder, for the server game source."""
+    """The game files this server offers to the browsers.
+
+    With the server game source these are the needed files of the game
+    folder. With the local one game_dir is None and only the files the engine
+    adds to a game folder are offered, if it has any.
+    """
     CACHE_SECONDS = 30
 
-    def __init__(self, game_dir):
-        self.game_dir = os.path.realpath(game_dir)
+    def __init__(self, game_dir, app_dir):
+        self.game_dir = os.path.realpath(game_dir) if game_dir else None
+        self.app_dir = app_dir
         self.lock = threading.Lock()
         self.built = 0
         self.files = {}  # relative path -> full path
@@ -316,7 +336,7 @@ class GameFiles:
     def _build(self):
         files, listing = {}, []
         digest = hashlib.sha256()
-        for parts, full in gamefiles.walk_needed(self.game_dir):
+        for parts, full in gamefiles.walk_needed(self.game_dir, self.app_dir):
             st = os.stat(full)
             rel = "/".join(parts)
             files[rel] = full
@@ -341,36 +361,38 @@ class GameFiles:
 
 class App:
     def __init__(self):
-        self.user = env("EZEUS_USER", "zeus")
-        password = env("EZEUS_PASSWORD")
-        self.password_hash = env("EZEUS_PASSWORD_HASH")
+        self.user = env("USER", DEFAULT_USER)
+        password = env("PASSWORD")
+        self.password_hash = env("PASSWORD_HASH")
         if password:
             if len(password) < MIN_PASSWORD_LENGTH:
-                sys.exit(f"EZEUS_PASSWORD must have at least {MIN_PASSWORD_LENGTH} characters")
+                sys.exit(f"{PREFIX}_PASSWORD must have at least "
+                         f"{MIN_PASSWORD_LENGTH} characters")
             self.password_hash = hash_password(password)
         if not self.password_hash:
-            sys.exit("Set EZEUS_PASSWORD or EZEUS_PASSWORD_HASH")
+            sys.exit(f"Set {PREFIX}_PASSWORD or {PREFIX}_PASSWORD_HASH")
 
         here = os.path.dirname(os.path.abspath(__file__))
-        self.app_dir = os.path.realpath(env("EZEUS_APP_DIR", os.path.join(here, "app")))
-        self.data_dir = os.path.realpath(env("EZEUS_DATA_DIR", "/data"))
+        self.app_dir = os.path.realpath(env("APP_DIR", os.path.join(here, "app")))
+        self.data_dir = os.path.realpath(env("DATA_DIR", "/data"))
         self.login_page = os.path.join(here, "login.html")
-        if not os.path.isfile(os.path.join(self.app_dir, "eZeus.html")):
-            sys.exit(f"eZeus.html not found in {self.app_dir}")
+        if not os.path.isfile(os.path.join(self.app_dir, PAGE)):
+            sys.exit(f"{PAGE} not found in {self.app_dir}")
         os.makedirs(self.data_dir, exist_ok=True)
 
-        self.mode = env("EZEUS_GAME_SOURCE", "local").lower()
+        self.mode = env("GAME_SOURCE", "local").lower()
         if self.mode not in ("server", "local"):
-            sys.exit("EZEUS_GAME_SOURCE must be 'server' or 'local'")
-        self.game = None
+            sys.exit(f"{PREFIX}_GAME_SOURCE must be 'server' or 'local'")
+        game_dir = None
         if self.mode == "server":
-            game_dir = env("EZEUS_GAME_DIR", "/game")
-            if not gamefiles.find_ezeus_dir(game_dir):
-                sys.exit(f"No eZeus folder with interface.e in {game_dir}; mount your "
-                         "Zeus and Poseidon folder there or set EZEUS_GAME_SOURCE=local")
-            self.game = GameFiles(game_dir)
+            game_dir = env("GAME_DIR", "/game")
+            problem = gamefiles.problem(game_dir)
+            if problem:
+                sys.exit(f"{problem} in {game_dir}; mount your game folder there "
+                         f"or set {PREFIX}_GAME_SOURCE=local")
+        self.game = GameFiles(game_dir, self.app_dir)
 
-        secret = env("EZEUS_SECRET")
+        secret = env("SECRET")
         if secret:
             secret = secret.encode()
         else:
@@ -381,18 +403,18 @@ class App:
                 os.chmod(secret_path, 0o600)
             with open(secret_path, "rb") as f:
                 secret = f.read()
-        self.sessions = Sessions(secret, int(env("EZEUS_SESSION_DAYS", "30")))
+        self.sessions = Sessions(secret, int(env("SESSION_DAYS", "30")))
         self.limiter = LoginLimiter()
         # scrypt takes memory; do not let sign-in attempts pile up.
         self.login_slots = threading.BoundedSemaphore(2)
         self.saves = Saves(self.data_dir)
-        self.trust_proxy = env("EZEUS_TRUST_PROXY", "1") == "1"
-        self.port = int(env("EZEUS_PORT", "8080"))
+        self.trust_proxy = env("TRUST_PROXY", "1") == "1"
+        self.port = int(env("PORT", "8080"))
 
 
 class Handler(http.server.BaseHTTPRequestHandler):
     app = None
-    server_version = "eZeusWeb"
+    server_version = NAME.replace(" ", "")
     sys_version = ""
     timeout = 120
 
@@ -537,7 +559,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return self.redirect("/login")
 
         if path == "/":
-            return self.redirect("/eZeus.html")
+            return self.redirect("/" + PAGE)
         if path == "/api/config":
             return self.send_json(200, {"user": user, "mode": self.app.mode,
                                         "sync": True, "version": VERSION})
@@ -549,12 +571,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
             except SaveError as e:
                 return self.send_error_json(e.status, str(e))
         if path == "/game-manifest.json":
-            if not self.app.game:
-                return self.send_error_json(404, "not found")
             self.app.game.refresh()
+            if not self.app.game.files:
+                return self.send_error_json(404, "not found")
             return self.send_bytes(200, self.app.game.manifest, "application/json")
         if path.startswith("/game/"):
-            full = self.app.game.path(path[len("/game/"):]) if self.app.game else None
+            full = self.app.game.path(path[len("/game/"):])
             if not full:
                 return self.send_error_json(404, "not found")
             return self.send_file(full)
@@ -672,7 +694,7 @@ def main():
     httpd.daemon_threads = True
     # As PID 1 in a container Python ignores SIGTERM unless it is handled.
     signal.signal(signal.SIGTERM, lambda *_: threading.Thread(target=httpd.shutdown).start())
-    print(f"eZeus Web on port {Handler.app.port}, game source: {Handler.app.mode}", flush=True)
+    print(f"{NAME} on port {Handler.app.port}, game source: {Handler.app.mode}", flush=True)
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:

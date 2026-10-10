@@ -28,6 +28,13 @@ def find_ezeus_dir(game_dir):
     return None
 
 
+def problem(game_dir):
+    """Why game_dir cannot be served, or None when the game is in it."""
+    if find_ezeus_dir(game_dir):
+        return None
+    return "No eZeus folder with interface.e"
+
+
 def needed(rel_parts):
     """Whether a file (path parts relative to the game folder) is needed."""
     name = rel_parts[-1]
@@ -40,12 +47,16 @@ def needed(rel_parts):
     return True
 
 
-def walk_needed(game_dir):
+def walk_needed(game_dir, app_dir=None):
     """Yields (parts, full_path) for every needed file.
 
     Skips hidden folders and eZeus folders other than the release one (e.g. a
     source checkout). The release folder keeps its own name in parts.
+    game_dir is None when the browsers bring their own game folder; eZeus
+    adds nothing to it, so there is nothing to offer then.
     """
+    if not game_dir:
+        return
     ezeus = find_ezeus_dir(game_dir)
     for root, dirs, files in os.walk(game_dir):
         rel_root = os.path.relpath(root, game_dir)
