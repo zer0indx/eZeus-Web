@@ -83,9 +83,12 @@ no game files in it.
 ### Start
 
 ```bash
-cp .env.example .env    # set EZEUS_PASSWORD, at least 12 characters
+cp .env.example .env    # set EZEUS_PASSWORD (at least 12 characters) and EZEUS_GAME_PATH
 docker compose up -d
 ```
+
+This starts the published image. In a checkout with your own changes, build it
+instead: `docker compose up -d --build`.
 
 or paste `docker-compose.yml` into your stack manager and set the same
 variables there. Then point the reverse proxy at port 8080 and open the site.
@@ -94,8 +97,9 @@ variables there. Then point the reverse proxy at port 8080 and open the site.
 |---|---|
 | `EZEUS_USER` | Sign-in name (default `zeus`) |
 | `EZEUS_PASSWORD` | Password, at least 12 characters. Or `EZEUS_PASSWORD_HASH`, made with `docker run --rm -it ghcr.io/zer0indx/ezeus-web python /app/server.py hash-password` |
-| `EZEUS_GAME_SOURCE` | `server` or `local`, see below (default `local`) |
-| `EZEUS_GAME_PATH` | Host folder mounted at `/game` (compose only) |
+| `EZEUS_GAME_SOURCE` | `server` or `local`, see below (`server` in `docker-compose.yml`; `local` when the variable is not set at all) |
+| `EZEUS_GAME_PATH` | Host folder mounted at `/game` (compose only, default `./game`) |
+| `EZEUS_DATA_PATH` | Where `/data` lives (compose only). Not set: the Docker volume `ezeus-data`. A path on the host (with a slash): that folder |
 | `EZEUS_HTTP_PORT` | Host port (compose only, default 8080) |
 | `EZEUS_SESSION_DAYS` | How long a sign-in lasts (default 30) |
 | `EZEUS_TRUST_PROXY` | `1` (default) takes the client address and scheme from the proxy headers; set `0` if nothing sits in front |
@@ -151,8 +155,9 @@ and the API. There is one account and no default password.
 docker build -t ezeus-web .
 ```
 
-The GitHub workflow in `.github/workflows/docker.yml` does the same for
-version tags and publishes `ghcr.io/zer0indx/ezeus-web`.
+The GitHub workflow in `.github/workflows/docker.yml` does the same and
+publishes `ghcr.io/zer0indx/ezeus-web`: a `web-v1.2` git tag gives the image
+tags `1.2` and `latest`, a manual run gives `edge`.
 
 Without Docker: build the web version as above, then
 
@@ -169,7 +174,11 @@ EZEUS_PASSWORD=... EZEUS_APP_DIR=build-web EZEUS_DATA_DIR=./data python web/serv
 - `eMainWindow::exec()` runs one frame per `emscripten_set_main_loop` tick
   instead of a blocking `while` loop.
 - `web/shell.html` is the page: it imports the game files into OPFS and starts
-  the game.
+  the game. Only the theme block of its style and the "This game" block of its
+  script are about eZeus; the rest, `web/login.html` and `web/server.py` (but
+  for its "This game" block) are shared with
+  [Akhenaten Web](https://github.com/zer0indx/Akhenaten-Web) and
+  [Augustus Web](https://github.com/zer0indx/Augustus-Web).
 - Every file operation on OPFS is proxied to another thread, so files are read
   in large blocks: `QFile` (pak files) and saves are read into memory at once,
   texture data with a single `fread`.

@@ -1,8 +1,10 @@
 # Self-hosted eZeus Web: the game compiled to WebAssembly plus web/server.py.
 # It contains no game files; see web/README.md.
 
+ARG EMSDK_VERSION=6.0.11
+
 # The WebAssembly build is the same for every target platform.
-FROM --platform=$BUILDPLATFORM emscripten/emsdk:6.0.11 AS build
+FROM --platform=$BUILDPLATFORM emscripten/emsdk:${EMSDK_VERSION} AS build
 WORKDIR /src
 COPY . .
 RUN emcmake cmake -S . -B build-web -DCMAKE_BUILD_TYPE=Release \

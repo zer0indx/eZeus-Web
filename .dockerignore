@@ -3,4 +3,6 @@
 build-web
 build
 .env
+game
+data
 *.user

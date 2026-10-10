@@ -1,9 +1,19 @@
 # Self-hosted eZeus Web. Copy .env.example to .env, or set the variables in
-# your stack manager, and put a reverse proxy with HTTPS in front of the port.
+# your stack manager, and put a reverse proxy with HTTPS
+# in front of the port.
 # See web/README.md.
+
+# Pinned so the saves volume (ezeus_ezeus-data) stays the same
+# wherever the checkout lives; without it Compose derives the project name
+# from the folder name.
+name: ezeus
 services:
   ezeus-web:
+    # The published image when there is one for this name, otherwise built
+    # from this checkout. To run your own changes: docker compose up -d --build
     image: ghcr.io/zer0indx/ezeus-web:latest
+    build: .
+    pull_policy: missing
     container_name: ezeus-web
     restart: unless-stopped
     ports:
@@ -13,13 +23,22 @@ services:
       EZEUS_PASSWORD: ${EZEUS_PASSWORD:?set EZEUS_PASSWORD (at least 12 characters)}
       # "server": the game files come from the folder mounted at /game.
       # "local": every browser picks its own Zeus and Poseidon folder.
-      EZEUS_GAME_SOURCE: ${EZEUS_GAME_SOURCE:-local}
+      EZEUS_GAME_SOURCE: ${EZEUS_GAME_SOURCE:-server}
+      EZEUS_SESSION_DAYS: ${EZEUS_SESSION_DAYS:-30}
+      # 1: a reverse proxy is in front, the client address and https come
+      # from its headers. 0: browsers reach the port directly.
+      EZEUS_TRUST_PROXY: ${EZEUS_TRUST_PROXY:-1}
     volumes:
-      # Saves, the session secret and the start page art.
-      - ezeus-data:/data
+      # Saves, their older versions and the session secret: the ezeus-data
+      # volume, or the folder on the host that EZEUS_DATA_PATH names.
+      - ${EZEUS_DATA_PATH:-ezeus-data}:/data
       # Only read with EZEUS_GAME_SOURCE=server: your Zeus and Poseidon folder
-      # with an eZeus release folder inside.
+      # (the one with an eZeus release folder inside).
       - ${EZEUS_GAME_PATH:-./game}:/game:ro
+    # The container runs as user 1000. With a host folder in EZEUS_DATA_PATH
+    # that this user cannot write to, set the folder's owner here
+    # (e.g. Synology "1026:100").
+    # user: "1026:100"
 
 volumes:
   ezeus-data:

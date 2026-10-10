@@ -1,10 +1,11 @@
 name: Docker image
 
 # Builds the self-hosted image and publishes it to the GitHub Container
-# Registry: for version tags (v1.0 -> 1.0 and latest) and on request (edge).
+# Registry: for web version tags (web-v1.0 -> 1.0 and latest) and on request
+# (edge). The same workflow is used in eZeus Web, Akhenaten Web and Augustus Web.
 on:
   push:
-    tags: ["v*"]
+    tags: ["web-v*"]
   workflow_dispatch:
 
 jobs:
@@ -31,8 +32,8 @@ jobs:
         with:
           images: ghcr.io/${{ github.repository_owner }}/ezeus-web
           tags: |
-            type=match,pattern=v(.*),group=1
-            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+            type=match,pattern=web-v(.*),group=1
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/web-v') }}
             type=raw,value=edge,enable=${{ github.event_name == 'workflow_dispatch' }}
 
       - uses: docker/build-push-action@v6
